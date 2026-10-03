@@ -1,0 +1,5 @@
+# terraform.tfvars にコピーして値を入れる(terraform.tfvars はコミットしない)
+region = "ap-northeast-1"
+
+# Codex を使うとき(秘密の値は TF_VAR_openai_api_key のように環境変数で渡してもよい)
+# openai_api_key = "sk-..."

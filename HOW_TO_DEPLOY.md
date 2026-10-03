@@ -309,6 +309,91 @@ Docker イメージには AWS が公開している RDS の CA 証明書の束�
 
 RDS の代わりに Turso を使う場合は、「Cloudflare」の Turso の手順でデータベースを作ってマイグレーションを適用し、`DATABASE_URL`(`libsql://〜`)と `DATABASE_AUTH_TOKEN` を Secrets Manager から渡す。
 
+## Terraform で作る場合
+
+ここまでの Cloudflare・GCP・AWS の手順は、`terraform/` の Terraform でもまとめて作れる。
+置き場所ごとにディレクトリが分かれており、それぞれを別々に `terraform apply` する。
+
+| ディレクトリ | 作るもの |
+| --- | --- |
+| `terraform/cloudflare` | D1、Workers の独自ドメイン(任意)、Cloudflare Access(任意) |
+| `terraform/gcp` | 使う API の有効化、Artifact Registry、Cloud SQL for PostgreSQL、Secret Manager、Cloud Run 専用のサービスアカウント、Cloud Run |
+| `terraform/aws` | VPC、ECR、RDS for PostgreSQL、Secrets Manager、IAM ロール、ECS Express Mode のサービス |
+
+どのディレクトリも、`terraform.tfvars.example` を `terraform.tfvars` にコピーして値を入れてから使う。
+DB のパスワードは Terraform が作り、接続先の URL ごとシークレットに入れるので、手で決める必要はない。
+OpenAI の API キーなどの秘密の値は `terraform.tfvars` か環境変数(`TF_VAR_openai_api_key` など)で渡す。空のものはシークレットを作らず、アプリにも渡さない。
+
+DB のパスワードと渡した秘密の値は、Terraform の state にも平文で残る。
+そのため state は手元に置かず、暗号化したリモートの置き場所(GCS・S3 など)を backend に設定して使う。
+`terraform.tfvars` と state はコミットしない(`.gitignore` で除外している)。
+
+### Cloudflare
+
+Worker 本体は Vite でビルドした出力を `wrangler deploy` で置くので、Terraform では管理しない。
+Terraform が作るのは、Worker より先に要る D1 と、Worker を置いたあとに足す独自ドメイン・Access である。
+API トークンは環境変数 `CLOUDFLARE_API_TOKEN` で渡す。
+
+```bash
+cd terraform/cloudflare
+terraform init
+terraform apply
+terraform output d1_database_id   # wrangler.jsonc の database_id に書く
+cd ../..
+pnpm exec wrangler d1 migrations apply stock-analyzer --remote
+pnpm deploy:cloudflare
+```
+
+独自ドメインと Access は、Worker をデプロイしたあとに `custom_domain`・`zone_id`・`access_domain`・`access_allowed_emails` を `terraform.tfvars` に書き、もう一度 `terraform apply` すると作られる。
+独自ドメインは Worker が存在しないと作れないので、最初の apply では設定しない。
+
+### GCP
+
+Cloud Run はイメージが存在しないと作れない。
+そのため、最初に Artifact Registry だけを作ってイメージを push し、それから全体を apply する。
+認証は `gcloud auth application-default login` の資格情報を使う。
+
+```bash
+cd terraform/gcp
+terraform init
+terraform apply -target=google_project_service.apis -target=google_artifact_registry_repository.app
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+docker build --platform linux/amd64 -t asia-northeast1-docker.pkg.dev/<プロジェクト ID>/stock-analyzer/stock-analyzer:latest ../..
+docker push asia-northeast1-docker.pkg.dev/<プロジェクト ID>/stock-analyzer/stock-analyzer:latest
+terraform apply
+terraform output url
+```
+
+Cloud Run は、既定の Compute Engine のサービスアカウントではなく、Cloud SQL への接続とアプリのシークレットの読み取りだけを許したサービスアカウントで動く。
+組織のポリシーで `allUsers` への公開が禁じられているプロジェクトでは、`allow_unauthenticated = false` にして IAP などで入口を用意する。
+
+### AWS
+
+ECS のサービスもイメージが存在しないと起動しないので、最初に ECR だけを作ってイメージを push し、それから全体を apply する。
+認証は AWS CLI の資格情報(`AWS_PROFILE` など)を使う。
+
+```bash
+cd terraform/aws
+terraform init
+terraform apply -target=aws_ecr_repository.app
+aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin <アカウント ID>.dkr.ecr.ap-northeast-1.amazonaws.com
+docker build --platform linux/amd64 -t <アカウント ID>.dkr.ecr.ap-northeast-1.amazonaws.com/stock-analyzer:latest ../..
+docker push <アカウント ID>.dkr.ecr.ap-northeast-1.amazonaws.com/stock-analyzer:latest
+terraform apply
+terraform output url
+```
+
+アプリのタスクは、Yahoo Finance や OpenAI に出ていくためにパブリックサブネットに置き、NAT ゲートウェイの費用をかけない。
+タスクのセキュリティグループが受け付けるのは VPC の中(ロードバランサー)からの 3000 番だけなので、タスクに直接は届かない。
+RDS はインターネットへの経路のないプライベートサブネットに置き、アプリのタスクのセキュリティグループからの 5432 番だけを許す。
+
+### 消すとき
+
+Cloud SQL と RDS には、アカウントと口座のデータが入る。
+誤って消さないよう、どちらも削除保護を有効にしてある(`db_deletion_protection`)。
+本当に消すときは、`db_deletion_protection = false` にして一度 apply してから `terraform destroy` する。
+RDS は消す前に最終スナップショット(`stock-analyzer-db-final`)を取る。
+
 ## 更新のしかた
 
 アプリを更新するときは、ビルドとデプロイをやり直す。
@@ -317,31 +402,3 @@ Cloudflare Workers は起動時にマイグレーションを流さないので�
 D1 は `pnpm exec wrangler d1 migrations apply stock-analyzer --remote`、Turso は `pnpm db:migrate` を Turso に向けて実行する。
 
 スキーマを変えるときは、`src/server/db/schema.sqlite.ts` と `src/server/db/schema.pg.ts` の両方を同じように直し、`pnpm db:generate` で `drizzle/` と `drizzle-pg/` のマイグレーションをまとめて作る。
-
-## 旧版のデータの取り込み
-
-旧版はデータを `data/*.json` に保存していた。
-新しい環境で画面からアカウントを作ってから、取り込み先の DB を `DATABASE_URL`(と `DATABASE_AUTH_TOKEN`)で指定して実行すると、そのアカウントに取り込める。
-
-```bash
-pnpm db:import --email you@example.com --data-dir ./data
-```
-
-設定・関心銘柄・シミュレーターの口座はファイルの内容で置き換え、判定結果は銘柄ごとに上書きし、スクリーニング結果はまだない実行分だけを足す。
-同じデータで何度実行しても結果は変わらない。
-手元から Cloud SQL に繋ぐときは Cloud SQL Auth Proxy を、RDS に繋ぐときは同じ VPC の踏み台を経由する。
-
-D1 には手元から直接繋げないので、ローカルの sqld に取り込んでから、データだけを SQL にして D1 に流す。
-この方法は sqld のアカウントごと移すので、マイグレーションだけを当てた空の D1 に対して行う。
-
-```bash
-# 1. ローカルの sqld で、移したいアカウントを作って取り込む(pnpm db:up と pnpm dev で起動しておく)
-pnpm db:import --email you@example.com
-
-# 2. sqld の中身から、データの INSERT 文だけを取り出す。外部キーの確認は最後にまとめて行う
-{ echo 'PRAGMA defer_foreign_keys = on;'; curl -s http://localhost:8080/dump \
-  | grep -E '^INSERT INTO ' | grep -vE '^INSERT INTO "?(__drizzle_migrations|sqlite_sequence)'; } > d1-data.sql
-
-# 3. D1 に流す
-pnpm exec wrangler d1 execute stock-analyzer --remote --file d1-data.sql
-```

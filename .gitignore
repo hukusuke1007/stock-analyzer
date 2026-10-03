@@ -15,6 +15,13 @@ data/
 !.env.example
 .dev.vars
 
+# Terraform(state と tfvars には DB のパスワードや API キーが入る。.terraform.lock.hcl はコミットする)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
 # OS・エディタ・ツール
 .DS_Store
 .vscode/
