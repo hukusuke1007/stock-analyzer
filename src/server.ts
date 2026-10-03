@@ -166,9 +166,9 @@ async function judge(strategy: Strategy, a: Analysis, userNews: string | undefin
   };
 }
 
-// strategy の指定を解決する。省略時は急落リバウンド
+// strategy の指定を解決する。省略時はスイング
 function resolveStrategy(id: unknown): Strategy | undefined {
-  return id === undefined ? STRATEGIES.rebound : typeof id === "string" ? STRATEGIES[id] : undefined;
+  return id === undefined ? STRATEGIES.swing : typeof id === "string" ? STRATEGIES[id] : undefined;
 }
 const STRATEGY_ERROR = `strategy は ${Object.keys(STRATEGIES).join(" / ")} のいずれかを指定してください`;
 

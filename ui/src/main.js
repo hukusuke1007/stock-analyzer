@@ -81,7 +81,7 @@ const store = {
 
 const state = {
   strategies: [],
-  strategy: store.get("strategy", "rebound"),
+  strategy: store.get("strategy", "swing"),
   decisions: false, // /health の結果。判定(Decisions)の AI を使えるか
   code: null,
   bars: new Map(), // code -> { name, bars }
@@ -1934,10 +1934,10 @@ async function init() {
   bindEvents();
   try {
     state.strategies = await api("/strategies");
-    if (!state.strategies.some((s) => s.id === state.strategy)) state.strategy = state.strategies[0]?.id ?? "rebound";
+    if (!state.strategies.some((s) => s.id === state.strategy)) state.strategy = state.strategies[0]?.id ?? "swing";
     indicators = indicatorsFor(state.strategy);
   } catch {
-    state.strategies = [{ id: "rebound", label: "急落リバウンド" }, { id: "swing", label: "スイング" }];
+    state.strategies = [{ id: "swing", label: "スイング" }, { id: "rebound", label: "急落リバウンド" }];
   }
   await Promise.all([loadWatch(), ...state.strategies.map((s) => loadSaved(s.id).catch(() => {}))]);
   await loadHealth();

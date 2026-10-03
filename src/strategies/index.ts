@@ -43,4 +43,5 @@ export type Strategy = {
   maxHoldingDays: number;
 };
 
-export const STRATEGIES: Record<string, Strategy> = { rebound, swing };
+// 並び順は UI の切り替えボタンの順。先頭が既定
+export const STRATEGIES: Record<string, Strategy> = { swing, rebound };
