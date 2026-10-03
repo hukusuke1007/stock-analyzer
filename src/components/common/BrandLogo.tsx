@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 // アプリのロゴ。2本の白い柱と、斜めに切り上がる青から緑のグラデーションの柱で「上昇」を表す。
-// ファビコン(__root.tsx)も同じ図形を使うので、形を変えたら FAVICON_SVG も直す
+// ファビコン(__root.tsx)と README のアイコン(docs/images/icon.svg)も同じ図形を使うので、形を変えたら FAVICON_SVG と icon.svg も直す
 
 /**
  * ロゴを描く。グラデーションの id はページ内で重複しないよう useId で作る。

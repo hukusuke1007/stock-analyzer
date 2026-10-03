@@ -857,7 +857,14 @@ body:has(.auth-page) { overflow: auto; }
 .auth-note { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
 
 /* ---------- アカウントのメニュー(上部バーの右端) ---------- */
-.account-btn { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.account-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--panel-2); color: var(--muted); cursor: pointer;
+}
+.account-btn svg { width: 22px; height: 22px; margin-top: 6px; }
+.account-btn:hover, .account-btn[aria-expanded="true"] { color: var(--text); border-color: var(--blue); }
 .account-menu { right: 0; left: auto; min-width: 220px; padding: 6px 0; }
 .account-menu .account-email { padding: 6px 14px 8px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); word-break: break-all; }
 .account-menu button {

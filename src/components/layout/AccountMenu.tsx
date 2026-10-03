@@ -8,6 +8,7 @@ import { Modal } from "../common/Modal";
 
 /**
  * 上部バーの右端のアカウントのメニュー(ログイン中のメールアドレス・ログアウト・退会)。
+ * ボタンにはメールアドレスを出さずユーザーのアイコンだけを置く。画面を共有したりスクリーンショットを撮ったりしたときに、メールアドレスが写らないようにするため。
  */
 export function AccountMenu() {
   const { data: user } = useQuery(meQuery);
@@ -47,8 +48,8 @@ export function AccountMenu() {
 
   return (
     <div className="dropdown" ref={ref}>
-      <button className="tb-btn account-btn" type="button" title={user?.email} onClick={() => setOpen(!open)}>
-        {user?.email ?? "アカウント"} ▾
+      <button className="account-btn" type="button" aria-label="アカウント" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <UserIcon />
       </button>
       {open && (
         <div className="menu account-menu">
@@ -72,6 +73,18 @@ export function AccountMenu() {
         <DeleteAccountForm onCancel={() => setDeleting(false)} />
       </Modal>
     </div>
+  );
+}
+
+/**
+ * ユーザーのアイコン(人の形)。アカウントごとの画像は持たないので、全員に同じ図形を出す。
+ */
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="9" r="4" fill="currentColor" />
+      <path d="M4.5 20.5c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5Z" fill="currentColor" />
+    </svg>
   );
 }
 
