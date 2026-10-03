@@ -186,26 +186,6 @@ curl -s -X POST localhost:3000/judge \
 | `checks` / `technicals` / `decision` | 条件ごとの判定、テクニカル指標、Decisions の答え                                             |
 | `ranking`                            | ランク付けの順位・スコア・理由（2銘柄以上を判定したときの上位30件だけ）                      |
 
-### エンドポイント一覧
-
-| メソッド | パス                     | 内容                                                                             |
-| -------- | ------------------------ | -------------------------------------------------------------------------------- | --------------------------------- |
-| `GET`    | `/health`                | 起動確認。判定の AI と Codex を使えるか                                          |
-| `GET`    | `/settings`              | 設定・選択肢・アプリの情報                                                       |
-| `PUT`    | `/settings`              | 設定を変える。body は `{"decisionsProvider":"codex"                              | "jev","codexModel":"gpt-6-luna"}` |
-| `GET`    | `/strategies`            | 売買ルールの一覧                                                                 |
-| `GET`    | `/search?q=<文字列>`     | 銘柄検索（証券コードの前方一致・銘柄名の部分一致、最大12件）                     |
-| `GET`    | `/bars/:code`            | 日足1年分                                                                        |
-| `GET`    | `/screen?strategy=<id>`  | 全銘柄を調べる（SSE）                                                            |
-| `POST`   | `/judge`                 | 指定した銘柄を調べる                                                             |
-| `GET`    | `/results?strategy=<id>` | 保存済みの判定結果と、最新のスキャン結果                                         |
-| `DELETE` | `/results?strategy=<id>` | 保存済みの判定結果を消す                                                         |
-| `GET`    | `/watchlist`             | 関心銘柄                                                                         |
-| `PUT`    | `/watchlist`             | 関心銘柄を保存。body は `{"codes":["7203"],"columns":3}`                         |
-| `GET`    | `/sim`                   | シミュレーターの口座（保有株の評価額・損益を含む）                               |
-| `POST`   | `/sim/reset`             | 元金を指定して始め直す。body は `{"initialCash":1000000}`                        |
-| `POST`   | `/sim/orders`            | 仮想売買。body は `{"code":"7203","side":"buy","shares":100}`（株数は100株単位） |
-
 ## 開発用コマンド
 
 | コマンド          | 内容                                 |
