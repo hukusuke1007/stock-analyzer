@@ -11,7 +11,7 @@ export const swing: Strategy = {
   label: "スイング(上昇トレンドの押し目買い・3日〜2週間)",
   rules: [
     "スイングトレード(保有3日〜2週間): 上昇トレンド中の一時的な押し目で、反転を確認してから買う順張り。",
-    "買いの5条件: ①上昇トレンド(終値>75日線、25日線>75日線、25日線が上向き) ②25日線付近までの押し目 ③RSI(14)が40〜60 ④反転シグナル(終値が前日高値を上抜く、または直近3日でMACDゴールデンクロス) ⑤押しの出来高が普段より少ない(売り崩しではなく利益確定の押し)。",
+    "買いの5条件: 上昇トレンド(終値>75日線、25日線>75日線、25日線が上向き) / 25日線付近までの押し目 / RSI(14)が40〜60 / 反転シグナル(終値が前日高値を上抜く、または直近3日でMACDゴールデンクロス) / 押しの出来高が普段より少ない(売り崩しではなく利益確定の押し)。",
     "下落トレンドの銘柄は、RSIが低くても買わない。上昇の勢いだけで飛び乗らず、押し目を待つ。",
     "シグナルが1つだけのときはダマシを警戒して見送る。",
     "損切りは押し目の安値の下。直近高値までの値幅が損切り幅の1.5倍以上あるのが望ましい。",
@@ -22,7 +22,7 @@ export const swing: Strategy = {
     見送り: "上昇トレンドでない、押し目になっていない、または反転していない",
   },
   qualitative: {
-    checkIndex: 1, // 条件②は「25日線付近までの押し目」かつ「トレンドが崩れていない」
+    checkIndex: 1, // 押し目の条件は「25日線付近までの押し目」かつ「トレンドが崩れていない」
     label: "トレンド中の押し目",
     instructions:
       "直近20営業日の値動きから見て、今の下げは上昇トレンド中の一時的な押し目か(高値・安値の切り上げが崩れていないか)",
@@ -106,31 +106,31 @@ export const swing: Strategy = {
       asOf: last.date,
       checks: [
         {
-          label: "① 上昇トレンド",
+          label: "上昇トレンド",
           criterion: "終値>75日線、25日線>75日線、25日線が上向き",
           value: `75日線 ${technicals.ma75 ?? "—"} / 25日線 ${technicals.ma25 ?? "—"}(${technicals.ma25Slope ?? "—"})`,
           ok: uptrend,
         },
         {
-          label: "② 25日線への押し目",
+          label: "25日線への押し目",
           criterion: "直近5日の安値が25日線+2%以内、終値が25日線-2%以上",
           value: `安値 ${fmt(low5GapPct, "%")} / 終値 ${fmt(closeGapPct, "%")}`,
           ok: pullback,
         },
         {
-          label: "③ RSI(14)",
+          label: "RSI(14)",
           criterion: "40〜60",
           value: rsi14 === null ? "—" : rsi14.toFixed(1),
           ok: rsi14 !== null && rsi14 >= 40 && rsi14 <= 60,
         },
         {
-          label: "④ 反転シグナル",
+          label: "反転シグナル",
           criterion: "終値が前日高値を上抜く、または直近3日でMACDゴールデンクロス",
           value: [brokePrevHigh ? "前日高値を上抜き" : null, goldenCross ? "MACD GC" : null].filter(Boolean).join(" / ") || "なし",
           ok: brokePrevHigh || goldenCross,
         },
         {
-          label: "⑤ 押しの出来高",
+          label: "押しの出来高",
           criterion: "直近5日平均が25日平均を下回る",
           value: `${technicals.volumeRatio ?? "—"}倍`,
           ok: vol5 !== null && vol25 !== null && vol5 < vol25,

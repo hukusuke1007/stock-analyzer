@@ -8,7 +8,7 @@ export const rebound: Strategy = {
   label: "急落リバウンド(大型株の逆張り)",
   rules: [
     "急落リバウンド: 時価総額の大きい大型株が、明確な材料なしに急落したところを買い、歪みが解消したら売る逆張りスイング。",
-    "買いの4条件: Ⅰ前日比-2.5%以下の急落かつ明確な材料なし / Ⅱ25日線から大きく下方乖離かつ下げ止まりの兆し / Ⅲボリンジャーバンド-2σ〜-3σに到達 / ⅣRCI(10)が-90%以下。",
+    "買いの4条件: 前日比-2.5%以下の急落かつ明確な材料なし / 25日線から大きく下方乖離かつ下げ止まりの兆し / ボリンジャーバンド-2σ〜-3σに到達 / RCI(10)が-90%以下。",
     "4つ全部揃うことは稀。揃わないときは入らないのが正解。迷ったら入らない。",
     "どうしても入りたいなら、どちらに転んでも大怪我しないロット(100株の打診買い)で入る。",
     "エントリーは逆張りの中の順張り。急落後、底を打って反転してから買う。",
@@ -20,7 +20,7 @@ export const rebound: Strategy = {
     見送り: "条件が揃わない、下げ止まっていない、または悪材料がある。入らないのが正解",
   },
   qualitative: {
-    checkIndex: 1, // 条件Ⅱは「大きく下方乖離」かつ「下げ止まりの兆し」
+    checkIndex: 1, // 25日線乖離の条件は「大きく下方乖離」かつ「下げ止まりの兆し」
     label: "下げ止まり",
     instructions: "直近10営業日の終値の推移から見て、下落が止まり反転しつつある(下げ止まりの兆しがある)か",
     criteria: {
@@ -60,29 +60,29 @@ export const rebound: Strategy = {
     };
 
     const checks = [
-      { label: "Ⅰ 前日比", criterion: "-2.5%以下", value: fmt(changePct, "%"), ok: changePct <= -2.5 },
+      { label: "前日比", criterion: "-2.5%以下", value: fmt(changePct, "%"), ok: changePct <= -2.5 },
       {
-        label: "Ⅱ 25日線乖離",
+        label: "25日線乖離",
         criterion: "大きく下方乖離(-3%以下)",
         value: fmt(ma25GapPct, "%"),
         ok: ma25GapPct !== null && ma25GapPct <= -3,
       },
-      { label: "Ⅲ ボリンジャーバンド", criterion: "-2σ以下", value: fmt(sigma, "σ"), ok: sigma !== null && sigma <= -2 },
-      { label: "Ⅳ RCI(10)", criterion: "-90%以下", value: fmt(rci10, "%", 1), ok: rci10 !== null && rci10 <= -90 },
+      { label: "ボリンジャーバンド", criterion: "-2σ以下", value: fmt(sigma, "σ"), ok: sigma !== null && sigma <= -2 },
+      { label: "RCI(10)", criterion: "-90%以下", value: fmt(rci10, "%", 1), ok: rci10 !== null && rci10 <= -90 },
     ];
 
-    // 利確は「買った理由の歪みが解消したとき」。満たした条件に対応する利確ラインだけを出す(黄金の鉄則)
+    // 利確は「買った理由の歪みが解消したとき」。満たした条件に対応する利確ラインだけを出す(買った理由と売る理由を一致させる)
     const dropLine = round(prev * 0.975);
     const takeProfit = [
       ...(checks[0]!.ok
-        ? [{ price: dropLine, pct: pctFrom(last, dropLine), when: "Ⅰ(急落)で買った場合: 前日比-2.5%の水準まで戻したら" }]
+        ? [{ price: dropLine, pct: pctFrom(last, dropLine), when: "前日比の急落で買った場合: 前日比-2.5%の水準まで戻したら" }]
         : []),
       ...(checks[1]!.ok || checks[2]!.ok || !checks[0]!.ok
         ? [
             {
               price: round(ma25),
               pct: pctFrom(last, ma25),
-              when: "Ⅱ・Ⅲ(25日線乖離・-2σ)で買った場合: 当日の25日線にタッチしたら",
+              when: "25日線乖離・-2σで買った場合: 当日の25日線にタッチしたら",
             },
           ]
         : []),
