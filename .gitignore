@@ -1,0 +1,18 @@
+# 依存・ビルド結果
+node_modules/
+ui/dist/
+*.tsbuildinfo
+
+# 判定結果・関心銘柄・シミュレーターの口座(個人のデータ)
+data/
+
+# 環境変数(API キーなど)
+.env
+.env.*
+!.env.example
+
+# OS・エディタ・ツール
+.DS_Store
+.vscode/
+.idea/
+.playwright-mcp/

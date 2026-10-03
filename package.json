@@ -1,0 +1,42 @@
+{
+  "name": "stock-analyzer",
+  "version": "0.2.0",
+  "description": "株分析シミュレーター: 日本株の買い判断とランク付けを行う株分析ツール(API サーバー + ブラウザ UI)。判定とランク付けに Codex App Server / Jev を使う",
+  "license": "MIT",
+  "keywords": [
+    "stock",
+    "japan",
+    "technical-analysis",
+    "swing-trade",
+    "codex",
+    "jev"
+  ],
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm run \"/^dev:/\"",
+    "dev:api": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "dev:ui": "vite",
+    "start": "tsx --env-file-if-exists=.env src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "ui:build": "vite build",
+    "ui:preview": "pnpm ui:build && pnpm start"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@typesafe-ai/sdk": "^0.6.0",
+    "hono": "^4.13.8",
+    "lightweight-charts": "^5.2.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  }
+}

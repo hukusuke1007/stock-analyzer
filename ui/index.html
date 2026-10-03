@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>株分析シミュレーター</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232962ff'/%3E%3Cpath d='M6 22l6-8 5 4 9-10' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand" title="株分析シミュレーター">株</div><span class="app-name">株分析シミュレーター</span>
+      <div id="views" class="segmented tabs" role="tablist">
+        <button type="button" data-view="chart" role="tab">チャート</button>
+        <button type="button" data-view="grid" role="tab">関心銘柄</button>
+        <button type="button" data-view="sim" role="tab">シミュレーター</button>
+      </div>
+      <div class="sep"></div>
+      <form id="search-form" class="search" autocomplete="off">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.5 3a5.5 5.5 0 1 0 3.4 9.8l3.6 3.7 1.1-1.1-3.7-3.6A5.5 5.5 0 0 0 8.5 3Zm0 1.5a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" /></svg>
+        <input id="search" placeholder="銘柄名・証券コード (例: トヨタ / 7203)" spellcheck="false" />
+        <ul id="search-results" class="search-results" role="listbox" hidden></ul>
+      </form>
+      <div class="sep"></div>
+      <div id="strategy" class="segmented" role="tablist"></div>
+      <div class="sep"></div>
+      <div id="materials" class="segmented options materials-toggle" title="テクニカル以外の判断材料。オンにすると判定・スキャンで調べる">
+        <span class="opt-label">材料</span>
+        <button type="button" data-opt="earnings" title="次回の決算発表日(JPX の予定日、なければ Yahoo の予定日)。近ければ見送り">決算</button>
+        <button type="button" data-opt="news" title="直近7日のニュース見出し(Google ニュース)。Decisions が悪材料と判断したら見送り">ニュース</button>
+      </div>
+      <div class="sep"></div>
+      <div class="dropdown">
+        <button id="ind-btn" class="tb-btn" type="button">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 15l4-6 4 3 4-7 4 5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          インジケーター
+        </button>
+        <div id="ind-menu" class="menu" hidden></div>
+      </div>
+      <div class="spacer"></div>
+      <button id="live-status" class="status" type="button" title="取引時間中は1分ごとに株価を取り直してチャートに反映します(Yahoo Finance、約20分遅れ)。クリックで今すぐ更新">…</button>
+      <button id="ai-status" class="status" type="button" data-open-settings>…</button>
+      <button id="judge-btn" class="tb-btn primary" type="button">判定</button>
+    </header>
+
+    <main class="layout">
+      <nav class="toolbar" aria-label="チャートツール">
+        <button class="tool active" data-tool="crosshair" title="十字線">
+          <svg viewBox="0 0 20 20"><path d="M10 2v16M2 10h16" stroke="currentColor" stroke-width="1.3" /></svg>
+        </button>
+        <button class="tool" data-tool="magnet" title="マグネット(終値に吸着)">
+          <svg viewBox="0 0 20 20"><path d="M5 3v7a5 5 0 0 0 10 0V3h-3v7a2 2 0 0 1-4 0V3Z" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+        </button>
+        <div class="tool-sep"></div>
+        <button class="tool active" data-tool="lines" title="利確・損切りラインを表示">
+          <svg viewBox="0 0 20 20"><path d="M2 6h16M2 14h16" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3 2" /></svg>
+        </button>
+        <button class="tool" data-tool="fit" title="全体を表示">
+          <svg viewBox="0 0 20 20"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+        </button>
+        <button class="tool" data-tool="shot" title="スクリーンショットを保存">
+          <svg viewBox="0 0 20 20"><path d="M3 6h3l1.5-2h5L14 6h3v10H3Z" fill="none" stroke="currentColor" stroke-width="1.3" /><circle cx="10" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+        </button>
+        <button class="tool tool-bottom" type="button" data-open-settings title="設定" aria-label="設定">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 2h2.8l.4 2.2 1.5.8 2.1-.8 1.4 2.4-1.7 1.5v1.8l1.7 1.5-1.4 2.4-2.1-.8-1.5.8-.4 2.2H8.6l-.4-2.2-1.5-.8-2.1.8-1.4-2.4 1.7-1.5V8.1L3.2 6.6l1.4-2.4 2.1.8 1.5-.8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" /><circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3" /></svg>
+        </button>
+      </nav>
+
+      <section class="center">
+        <div class="chart-wrap">
+          <div id="legend" class="legend"></div>
+          <div id="data-window" class="data-window" hidden></div>
+          <div class="chart-actions">
+            <button id="star-btn" class="star chart-star" type="button" hidden></button>
+            <button id="trade-btn" class="star chart-star chart-trade" type="button" hidden title="この銘柄を株シミュレーターで仮想売買します">売買</button>
+          </div>
+          <div id="chart" class="chart"></div>
+          <div id="chart-empty" class="chart-empty">証券コードを入力するか、ウォッチリスト / スクリーナーから銘柄を選んでください</div>
+        </div>
+        <div class="rangebar">
+          <div id="ranges" class="ranges">
+            <button data-range="22">1M</button>
+            <button data-range="66">3M</button>
+            <button data-range="132" class="active">6M</button>
+            <button data-range="0">1Y</button>
+          </div>
+          <div class="sep"></div>
+          <div id="pane-toggles" class="ranges" title="チャートの段の表示 / 非表示"></div>
+          <div class="sep"></div>
+          <button id="dw-toggle" class="dw-toggle" type="button" title="十字線の日の値を指標ごとに一覧表示します">データ表示</button>
+          <span id="asof" class="muted"></span>
+          <div class="spacer"></div>
+          <a class="credit" href="https://www.tradingview.com/" target="_blank" rel="noopener">Charts by TradingView</a>
+          <button id="panel-toggle" class="tb-btn small" type="button">スクリーナー ▾</button>
+        </div>
+
+        <section id="panel" class="panel">
+          <div id="panel-resizer" class="resizer" title="ドラッグで高さを変更(ダブルクリックで元に戻す)"></div>
+          <div class="panel-head">
+            <span class="panel-title">東証プライム スクリーナー</span>
+            <button id="scan-btn" class="tb-btn primary small" type="button">全銘柄スキャン</button>
+            <div class="segmented options compact materials-toggle" title="スキャンで調べるテクニカル以外の材料(上部の「材料」と連動)">
+              <span class="opt-label">材料</span>
+              <button type="button" data-opt="earnings" title="候補全部の次回決算日を調べる。近ければ見送り">決算</button>
+              <button type="button" data-opt="news" title="候補全部のニュースを調べて Decisions の判定に入れる。悪材料なら見送り(スキャンの時間が延びます)">ニュース</button>
+            </div>
+            <div id="progress" class="progress" hidden>
+              <div class="bar"><div id="progress-fill"></div></div>
+              <span id="progress-text"></span>
+            </div>
+            <button id="clear-btn" class="tb-btn danger small" type="button" title="この売買ルールで保存した調査結果を削除">結果をクリア</button>
+            <div class="spacer"></div>
+            <div id="verdict-filter" class="chips">
+              <button data-v="買い" class="chip active">買い</button>
+              <button data-v="打診買い" class="chip active">打診買い</button>
+              <button data-v="見送り" class="chip">見送り</button>
+            </div>
+            <label class="check"><input id="large-only" type="checkbox" /> 大型株のみ</label>
+            <input id="screen-filter" class="filter" placeholder="コード / 銘柄名 / 業種" />
+          </div>
+          <div id="screen-summary" class="summary muted">スキャンすると東証プライム約1,560銘柄を判定します(約40〜50秒)</div>
+          <div class="table-wrap">
+            <table id="screen-table">
+              <thead>
+                <tr>
+                  <th class="pick" title="チェックすると関心銘柄に記録します">関心</th>
+                  <th class="trade-col" title="株シミュレーターで仮想売買します">売買</th>
+                  <th data-k="rank" class="num" title="Codex App Server のランキング(上位30件)">順位</th>
+                  <th data-k="code">コード</th>
+                  <th data-k="name">銘柄</th>
+                  <th data-k="sector">業種</th>
+                  <th data-k="scale">規模</th>
+                  <th data-k="verdict">判定</th>
+                  <th data-k="sat" class="num">条件</th>
+                  <th data-k="close" class="num">終値</th>
+                  <th data-k="chg" class="num">前日比</th>
+                  <th data-k="tp" class="num">利確</th>
+                  <th data-k="sl" class="num">損切り</th>
+                  <th data-k="earn" class="num" title="次回の決算発表日(「決算」オプションでスキャンしたとき)">決算</th>
+                  <th data-k="rr" class="num">R/R</th>
+                  <th data-k="buy" class="num" title="Decisions の「買い」確率">買い確率</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <aside class="sidebar">
+        <div id="side-resizer" class="v-resizer" title="ドラッグで幅を変更(ダブルクリックで元に戻す)"></div>
+        <section class="watch">
+          <div id="watch-resizer" class="h-resizer" title="ドラッグで高さを変更(ダブルクリックで元に戻す)"></div>
+          <div class="side-head">
+            <span>ウォッチリスト</span>
+            <form id="watch-form" class="watch-add"><input id="watch-input" placeholder="+ コード" spellcheck="false" /></form>
+          </div>
+          <div class="watch-cols"><span>銘柄</span><span>終値</span><span>前日比</span><span>判定</span></div>
+          <ul id="watchlist"></ul>
+        </section>
+        <section id="detail" class="detail"></section>
+      </aside>
+    </main>
+
+    <!-- 関心銘柄タブのデータ表示(カーソルの横に浮かせる) -->
+    <div id="grid-data-window" class="data-window floating" hidden></div>
+
+    <main id="grid-view" class="grid-view">
+      <div class="grid-bar">
+        <span class="panel-title">関心銘柄</span>
+        <span id="grid-count" class="muted"></span>
+        <form id="grid-add" class="watch-add" autocomplete="off"><input placeholder="+ コード" spellcheck="false" /></form>
+        <div class="spacer"></div>
+        <span class="muted small-label">1行の表示数</span>
+        <div id="grid-cols" class="segmented compact">
+          <button type="button" data-cols="1">1</button>
+          <button type="button" data-cols="2">2</button>
+          <button type="button" data-cols="3">3</button>
+          <button type="button" data-cols="4">4</button>
+          <button type="button" data-cols="5">5</button>
+        </div>
+        <button class="dw-toggle" type="button" title="十字線の日の値をカーソルの横に一覧表示します(チャートタブと共通)">データ表示</button>
+        <select id="grid-sort" class="select" title="並べ替えて保存します(その後はドラッグで自由に動かせます)">
+          <option value="">並べ替え…</option>
+          <option value="verdict">判定順(買い → 見送り)</option>
+          <option value="changeDesc">前日比が高い順</option>
+          <option value="changeAsc">前日比が低い順</option>
+          <option value="code">コード順</option>
+        </select>
+      </div>
+      <div id="grid-scroll" class="grid-scroll">
+        <div id="grid" class="grid"></div>
+        <div id="grid-empty" class="chart-empty" hidden>関心銘柄がありません。「+ コード」から追加してください</div>
+      </div>
+      <div class="grid-foot muted">
+        見出しをドラッグで並べ替え · チャートをダブルクリックでチャートタブに表示 · ドラッグで期間を移動 · Charts by
+        <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a> Lightweight Charts™
+      </div>
+    </main>
+
+    <!-- 株シミュレーター(仮想売買。実際には発注しない) -->
+    <main id="sim-view" class="sim-view">
+      <div class="grid-bar">
+        <span class="panel-title">株シミュレーター</span>
+        <span class="tag probe">仮想売買 · 実際には発注しません</span>
+        <span id="sim-since" class="muted small-label"></span>
+        <div class="spacer"></div>
+        <form id="sim-reset" class="sim-reset" autocomplete="off">
+          <label class="muted small-label" for="sim-initial">元金</label>
+          <input id="sim-initial" class="filter num" inputmode="numeric" placeholder="1,000,000" />
+          <span class="muted small-label">円</span>
+          <button class="tb-btn danger small" type="submit" title="保有株と売買履歴を消して、この元金で始め直します">この元金で始め直す</button>
+        </form>
+        <button id="sim-refresh" class="tb-btn small" type="button" title="保有株の現在値を取り直します">↻ 株価を更新</button>
+        <div id="sim-total" class="sim-total" title="現金 + 保有株の評価額(今の株価)"></div>
+      </div>
+      <div id="sim-summary" class="sim-summary"></div>
+      <div class="sim-body">
+        <section id="sim-order" class="sim-order"></section>
+        <section class="sim-main">
+          <h4 class="sim-h">
+            <button id="sim-watch-toggle" class="sim-toggle" type="button" aria-controls="sim-watch-wrap" aria-expanded="true">▾ 関心銘柄から買う</button>
+            <span class="muted">(行をクリックすると注文欄に入れます)</span>
+          </h4>
+          <div id="sim-watch-wrap" class="table-wrap"><table id="sim-watch"></table></div>
+          <h4 class="sim-h">保有株</h4>
+          <div class="table-wrap"><table id="sim-positions"></table></div>
+          <h4 class="sim-h">売買履歴</h4>
+          <div class="table-wrap"><table id="sim-trades"></table></div>
+        </section>
+      </div>
+      <div class="grid-foot muted">
+        株価は Yahoo Finance の最新の日足(取引時間中は現在値、東証は約20分遅れ)で約定したことにします。手数料・税金は含めません。100株単位。投資助言ではありません。
+      </div>
+    </main>
+
+    <dialog id="trade-dialog" class="settings-dialog trade-dialog" aria-labelledby="trade-title">
+      <div class="settings-head trade-head">
+        <h2 id="trade-title">売買 <span class="tag pending">仮想売買・実際には発注しません</span></h2>
+        <button id="trade-close" type="button" class="settings-close" aria-label="閉じる">×</button>
+      </div>
+      <!-- 開いている間だけ、シミュレーター タブの注文欄(#sim-order)をここに移して使う -->
+      <div id="trade-body" class="trade-body"></div>
+      <div class="trade-foot">
+        <span id="trade-cash" class="muted"></span>
+        <button id="trade-open-sim" type="button" class="tb-btn small">シミュレーターを開く ↗</button>
+      </div>
+    </dialog>
+
+    <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+      <form method="dialog" class="settings-form">
+        <div class="settings-head">
+          <h2 id="settings-title">設定</h2>
+          <button type="submit" value="cancel" class="settings-close" aria-label="閉じる">×</button>
+        </div>
+        <section class="settings-sec">
+          <h3>判定(Decisions)に使う AI</h3>
+          <div id="settings-providers" class="settings-providers"></div>
+        </section>
+        <section class="settings-sec">
+          <h3>Codex のモデル</h3>
+          <p class="settings-note">判定(Codex を選んだとき)とランク付けに使う</p>
+          <select id="settings-model" class="settings-select"></select>
+        </section>
+        <div id="settings-error" class="settings-error" hidden></div>
+        <div class="settings-actions">
+          <button type="submit" value="cancel" class="tb-btn">キャンセル</button>
+          <button id="settings-save" type="button" class="tb-btn primary">保存</button>
+        </div>
+        <section class="settings-sec settings-about">
+          <h3>このアプリについて</h3>
+          <dl id="settings-about"></dl>
+        </section>
+      </form>
+    </dialog>
+  </body>
+</html>

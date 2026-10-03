@@ -1,0 +1,835 @@
+/* TradingView のダークテーマに寄せた配色 */
+:root {
+  --bg: #131722;
+  --panel: #1e222d;
+  --panel-2: #2a2e39;
+  --border: #2a2e39;
+  --hover: #2a2e39;
+  --text: #d1d4dc;
+  --text-strong: #f0f3fa;
+  --muted: #787b86;
+  --blue: #2962ff;
+  --blue-soft: rgba(41, 98, 255, 0.18);
+  --up: #089981;
+  --up-soft: rgba(8, 153, 129, 0.16);
+  --down: #f23645;
+  --down-soft: rgba(242, 54, 69, 0.16);
+  --amber: #f7a600;
+  --amber-soft: rgba(247, 166, 0, 0.16);
+  /* 「売買」ボタンと選択中のタブ。暗い背景で一番目立つよう、白地に黒文字にする(コントラスト比 約16:1) */
+  --action: #f0f3fa;
+  --action-hover: #ffffff;
+  --action-text: #131722;
+  --tab-text: #c3c6ce;
+  --font: -apple-system, BlinkMacSystemFont, "Trebuchet MS", "Hiragino Sans", "Noto Sans JP", Roboto, Ubuntu, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 var(--font);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.muted { color: var(--muted); }
+.spacer { flex: 1; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* ---------- top bar ---------- */
+.topbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: var(--bg);
+  border-bottom: 4px solid var(--panel-2);
+}
+.brand {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 6px;
+  background: var(--blue);
+  color: #fff; font-weight: 700; font-size: 11px; letter-spacing: 0.5px;
+}
+.sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.search {
+  display: flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 10px;
+  border-radius: 6px;
+  background: transparent;
+  transition: background 0.12s;
+}
+.search:hover, .search:focus-within { background: var(--hover); }
+.search svg { width: 16px; height: 16px; fill: var(--muted); }
+.search input { width: 170px; background: none; border: 0; outline: 0; font-weight: 600; text-transform: uppercase; }
+.search input::placeholder { text-transform: none; font-weight: 400; color: var(--muted); }
+
+.tb-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 10px;
+  border: 0; border-radius: 6px;
+  background: transparent;
+}
+.tb-btn svg { width: 18px; height: 18px; }
+.tb-btn:hover { background: var(--hover); }
+.tb-btn.primary { background: var(--blue); color: #fff; font-weight: 600; }
+.tb-btn.primary:hover { background: #1e53e5; }
+.tb-btn.primary:disabled { background: var(--panel-2); color: var(--muted); cursor: default; }
+.tb-btn.small { height: 26px; font-size: 12px; }
+
+.segmented { display: flex; gap: 2px; }
+.segmented button {
+  height: 32px; padding: 0 10px;
+  border: 0; border-radius: 6px;
+  background: transparent; color: var(--muted);
+}
+.segmented button:hover { background: var(--hover); color: var(--text); }
+.segmented button.active { color: var(--text-strong); background: var(--panel-2); }
+
+.dropdown { position: relative; }
+.menu {
+  position: absolute; top: 38px; left: 0; z-index: 20;
+  min-width: 220px; padding: 6px 0;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.menu label { display: flex; align-items: center; gap: 10px; padding: 7px 14px; cursor: pointer; }
+.menu label:hover { background: var(--hover); }
+.menu .swatch { width: 14px; height: 3px; border-radius: 2px; }
+.menu input { accent-color: var(--blue); }
+
+.status { font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
+.status.on { color: var(--up); background: var(--up-soft); }
+.status.off { color: var(--amber); background: var(--amber-soft); }
+.status.err { color: var(--down); background: var(--down-soft); }
+
+/* ---------- layout ---------- */
+.layout {
+  height: calc(100% - 44px);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) var(--side-w, 340px);
+}
+.toolbar {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 0;
+  border-right: 4px solid var(--panel-2);
+}
+.tool {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 6px; background: transparent; color: var(--text);
+}
+.tool svg { width: 20px; height: 20px; }
+.tool:hover { background: var(--hover); }
+.tool.active { color: var(--blue); }
+.tool-sep { width: 24px; height: 1px; background: var(--border); margin: 4px 0; }
+
+.center { min-width: 0; display: flex; flex-direction: column; }
+.chart-wrap { position: relative; flex: 1; min-height: 200px; }
+.chart { position: absolute; inset: 0; }
+.chart-empty {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  color: var(--muted); pointer-events: none;
+}
+.legend {
+  position: absolute; top: 8px; left: 12px; z-index: 5;
+  pointer-events: none;
+  font-size: 12px;
+  text-shadow: 0 0 4px var(--bg);
+}
+.legend .title { font-size: 16px; color: var(--text-strong); font-weight: 600; }
+.legend .title small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.legend .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.legend .row b { font-weight: 400; color: var(--muted); margin-right: 3px; }
+.legend .verdict-tag { margin-left: 8px; vertical-align: 2px; }
+
+.rangebar {
+  height: 34px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 8px;
+  border-top: 1px solid var(--border);
+  border-bottom: 4px solid var(--panel-2);
+}
+.ranges { display: flex; gap: 2px; }
+.ranges button {
+  height: 24px; padding: 0 8px;
+  border: 0; border-radius: 4px; background: transparent; color: var(--text);
+}
+.ranges button:hover { background: var(--hover); }
+.ranges button.active { color: var(--blue); }
+#asof { font-size: 12px; }
+
+/* ---------- bottom panel (screener) ---------- */
+.panel { position: relative; height: 300px; display: flex; flex-direction: column; min-height: 0; }
+.panel.collapsed { display: none; }
+/* 上端のつまみ。rangebar の下線(4px)に重ねてドラッグしやすくする */
+.resizer {
+  position: absolute; top: -6px; left: 0; right: 0; z-index: 10;
+  height: 10px;
+  cursor: row-resize;
+}
+.resizer::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 2px;
+  height: 4px; background: transparent; transition: background 0.12s;
+}
+.resizer:hover::after, .resizer.dragging::after { background: var(--blue); }
+body.resizing { cursor: row-resize; user-select: none; }
+.panel-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px 6px;
+  flex-wrap: wrap;
+}
+.panel-title { font-weight: 600; color: var(--text-strong); }
+.progress { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.progress .bar { width: 160px; height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
+#progress-fill { height: 100%; width: 0; background: var(--blue); transition: width 0.2s; }
+.chips { display: flex; gap: 4px; }
+.chip {
+  height: 24px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: transparent; color: var(--muted); font-size: 12px;
+}
+.chip.active { border-color: var(--blue); color: var(--text-strong); background: var(--blue-soft); }
+.check { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--blue); }
+.filter {
+  width: 180px; height: 26px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg); outline: 0;
+}
+.filter:focus { border-color: var(--blue); }
+.summary { padding: 0 12px 6px; font-size: 12px; }
+.table-wrap { flex: 1; overflow: auto; min-height: 0; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg);
+  padding: 6px 10px;
+  text-align: left; font-weight: 400; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--text); }
+thead th.sorted::after { content: " ▾"; }
+thead th.sorted.asc::after { content: " ▴"; }
+tbody td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; font-variant-numeric: tabular-nums; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--hover); }
+tbody tr.selected { background: var(--blue-soft); }
+td.name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--text-strong); }
+td.code { color: var(--blue); font-weight: 600; }
+
+/* 判定バッジ */
+.tag {
+  display: inline-block; padding: 1px 6px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.tag.buy { color: var(--up); background: var(--up-soft); }
+.tag.probe { color: var(--amber); background: var(--amber-soft); }
+.tag.pass { color: var(--muted); background: var(--panel-2); }
+.tag.pending { color: var(--muted); background: transparent; }
+
+/* ---------- sidebar ---------- */
+.sidebar {
+  display: flex; flex-direction: column; min-height: 0;
+  border-left: 4px solid var(--panel-2);
+}
+.watch { position: relative; flex: 0 0 auto; height: 300px; display: flex; flex-direction: column; min-height: 0; border-bottom: 4px solid var(--panel-2); }
+.side-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px 6px; font-weight: 600; color: var(--text-strong);
+}
+.watch-add input {
+  width: 90px; height: 24px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg); outline: 0;
+  font-size: 12px;
+}
+.watch-add input:focus { border-color: var(--blue); }
+.watch-cols, #watchlist li {
+  display: grid; grid-template-columns: minmax(0, 1fr) 70px 62px 58px; gap: 6px; align-items: center;
+}
+.watch-cols { padding: 2px 12px 4px; font-size: 11px; color: var(--muted); }
+.watch-cols span:not(:first-child) { text-align: right; }
+#watchlist { list-style: none; margin: 0; padding: 0; overflow: auto; }
+#watchlist li { position: relative; padding: 6px 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+#watchlist li:hover { background: var(--hover); }
+#watchlist li.selected { background: var(--blue-soft); }
+#watchlist li > span:not(.sym) { text-align: right; }
+#watchlist .sym { min-width: 0; }
+#watchlist .sym b { display: block; color: var(--text-strong); }
+#watchlist .sym small { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#watchlist .del {
+  position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 12px; border: 0; background: none; color: var(--muted); font-size: 12px; padding: 0;
+  visibility: hidden;
+}
+#watchlist li:hover .del { visibility: visible; }
+#watchlist .del:hover { color: var(--down); }
+
+.detail { flex: 1; overflow: auto; padding: 12px; min-height: 0; }
+.detail .empty { color: var(--muted); padding: 20px 0; text-align: center; }
+.d-head { display: flex; align-items: baseline; gap: 8px; }
+.d-head .code { font-size: 18px; font-weight: 700; color: var(--text-strong); }
+.d-name { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.d-price { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 12px; }
+.d-price .last { font-size: 26px; font-weight: 600; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.d-price .chg { font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.verdict-card {
+  padding: 12px; border-radius: 6px; margin-bottom: 14px;
+  background: var(--panel); border-left: 3px solid var(--muted);
+}
+.verdict-card.buy { border-left-color: var(--up); }
+.verdict-card.probe { border-left-color: var(--amber); }
+.verdict-card .v { display: flex; align-items: center; justify-content: space-between; }
+.verdict-card .v strong { font-size: 20px; }
+.verdict-card.buy .v strong { color: var(--up); }
+.verdict-card.probe .v strong { color: var(--amber); }
+.verdict-card.pass .v strong { color: var(--text); }
+.verdict-card .sat { font-size: 12px; color: var(--muted); }
+.verdict-card .reason { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.verdict-card .loading { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--panel-2); border-top-color: var(--blue);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.d-sec { margin-bottom: 14px; }
+.d-sec h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.checks { list-style: none; margin: 0; padding: 0; }
+.checks li { display: grid; grid-template-columns: 18px 1fr; gap: 4px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.checks li:last-child { border-bottom: 0; }
+.checks .mark { font-weight: 700; }
+.checks .ok .mark { color: var(--up); }
+.checks .ng .mark { color: var(--down); }
+.checks .lbl { color: var(--text-strong); }
+.checks .val { font-size: 12px; font-variant-numeric: tabular-nums; }
+.checks .crit { font-size: 11px; color: var(--muted); }
+
+.plan { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plan .box { padding: 8px 10px; border-radius: 6px; background: var(--panel); }
+.plan .box .k { font-size: 11px; color: var(--muted); }
+.plan .box .p { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.plan .box.tp .p { color: var(--up); }
+.plan .box.sl .p { color: var(--down); }
+.plan .box .w { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.plan-meta { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.plan-meta b { color: var(--text-strong); font-weight: 600; }
+.signals { margin: 8px 0 0; padding-left: 16px; font-size: 12px; color: var(--text); }
+.signals li { margin: 3px 0; }
+
+.probs .pr { display: grid; grid-template-columns: 64px 1fr 40px; gap: 8px; align-items: center; margin: 4px 0; font-size: 12px; }
+.probs .track { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.probs .fill { height: 100%; border-radius: 3px; }
+.probs .pv { text-align: right; font-variant-numeric: tabular-nums; }
+.probs .model { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.news textarea {
+  width: 100%; min-height: 70px; resize: vertical;
+  padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); outline: 0;
+  font-size: 12px;
+}
+.news textarea:focus { border-color: var(--blue); }
+.news .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.news a { color: var(--blue); font-size: 12px; text-decoration: none; }
+.news a:hover { text-decoration: underline; }
+.disclaimer { font-size: 11px; color: var(--muted); margin-top: 16px; }
+.error { color: var(--down); font-size: 12px; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--panel-2); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* チャートの段の表示切り替え。非表示の段は薄くする */
+#pane-toggles button:not(.active) { color: var(--muted); text-decoration: line-through; }
+
+/* アプリ名 */
+.brand { font-size: 15px; }
+.app-name { font-weight: 700; color: var(--text-strong); font-size: 14px; margin: 0 6px 0 2px; white-space: nowrap; }
+
+/* 削除などの取り消せない操作 */
+.tb-btn.danger { color: var(--down); border: 1px solid var(--down-soft); }
+.tb-btn.danger:hover { background: var(--down-soft); }
+.tb-btn.danger:disabled { color: var(--muted); border-color: var(--border); background: transparent; cursor: default; }
+
+/* ---------- タブ(チャート / 関心銘柄) ---------- */
+body[data-view="grid"] .layout,
+body[data-view="grid"] #judge-btn { display: none; }
+body[data-view="chart"] .grid-view { display: none; }
+/* 画面の切り替えタブ。未選択も読める明るさにし、選択中は「売買」ボタンと同じ白地に黒文字で目立たせる */
+.tabs button { color: var(--tab-text); font-weight: 500; }
+.tabs button:hover { color: var(--text-strong); background: var(--panel-2); }
+.tabs button.active { color: var(--action-text); background: var(--action); font-weight: 700; }
+
+/* ---------- 関心銘柄(チャートの行列) ---------- */
+.grid-view { height: calc(100% - 44px); display: flex; flex-direction: column; min-height: 0; }
+.grid-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px;
+  border-bottom: 4px solid var(--panel-2);
+}
+.small-label { font-size: 12px; }
+.segmented.compact button { height: 26px; min-width: 28px; padding: 0 8px; font-size: 12px; }
+.select {
+  height: 26px; padding: 0 6px;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--bg); outline: 0; font-size: 12px;
+}
+.select:focus { border-color: var(--blue); }
+.grid-scroll { position: relative; flex: 1; overflow-y: auto; min-height: 0; padding: 8px; }
+.grid { display: grid; gap: 8px; }
+.grid-foot { padding: 4px 12px; font-size: 11px; border-top: 1px solid var(--border); }
+.grid-foot a { color: var(--muted); }
+
+.cell {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  background: var(--bg);
+  transition: border-color 0.12s, opacity 0.12s;
+}
+.cell.dragging { opacity: 0.4; }
+.cell.drop-target { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue) inset; }
+.cell-head {
+  display: flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 6px 0 4px;
+  background: var(--panel); border-bottom: 1px solid var(--border);
+  cursor: grab; user-select: none;
+}
+.cell-head:active { cursor: grabbing; }
+.grip { color: var(--muted); font-size: 11px; letter-spacing: -2px; padding: 0 2px; }
+.cell-info {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.c-code { color: var(--text-strong); }
+.c-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.c-price { color: var(--text-strong); }
+.c-btn {
+  height: 22px; min-width: 22px; padding: 0 6px;
+  border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 11px;
+}
+.c-btn:hover { background: var(--hover); color: var(--text); }
+.c-btn.del:hover { color: var(--down); }
+.c-btn:disabled { opacity: 0.4; cursor: default; }
+.cell-chart { position: relative; flex: 1; min-height: 0; }
+.cell-msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; padding: 8px; text-align: center; }
+
+/* リアルタイム更新の状態 */
+button.status { border: 0; cursor: pointer; }
+.status.live { color: var(--up); background: var(--up-soft); }
+
+/* スクリーナーの「関心」チェック欄 */
+th.pick, td.pick { width: 44px; text-align: center; padding-left: 6px; padding-right: 6px; }
+td.pick { cursor: default; }
+td.pick input { accent-color: var(--blue); width: 15px; height: 15px; cursor: pointer; vertical-align: middle; }
+
+/* ---------- テクニカル以外の材料(決算・ニュース) ---------- */
+.segmented.options { align-items: center; }
+.opt-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.segmented.options button.active { color: var(--amber); background: var(--amber-soft); }
+.warn { color: var(--amber); }
+.materials .mat-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; padding: 3px 0; }
+.materials .mat-row .k { color: var(--muted); min-width: 64px; }
+.materials .mat-row b { font-weight: 600; }
+.news-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.news-list li { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.45; }
+.news-list li:last-child { border-bottom: 0; }
+.news-list a { color: var(--text); text-decoration: none; }
+.news-list a:hover { color: var(--blue); text-decoration: underline; }
+.news-list small { display: block; color: var(--muted); font-size: 11px; margin-top: 1px; }
+.segmented.options.compact button { height: 26px; padding: 0 8px; font-size: 12px; }
+
+/* ---------- インジケーターメニュー: 線ごとの表示切り替え ---------- */
+.menu { max-height: calc(100vh - 70px); overflow-y: auto; }
+.menu label.sub { padding: 4px 14px 4px 38px; font-size: 12px; }
+.menu label.sub.disabled { opacity: 0.4; cursor: default; }
+
+/* ---------- データ表示(十字線の日の値の一覧) ---------- */
+.dw-toggle {
+  height: 24px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px;
+}
+.dw-toggle::before { content: "□ "; }
+.dw-toggle.active { color: var(--text-strong); border-color: var(--blue); background: var(--blue-soft); }
+.dw-toggle.active::before { content: "☑ "; }
+.data-window {
+  position: absolute; top: 96px; z-index: 6;
+  min-width: 210px; max-height: calc(100% - 110px); overflow: hidden;
+  padding: 8px 12px 10px;
+  background: rgba(30, 34, 45, 0.92);
+  border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.dw-date { text-align: center; font-weight: 600; color: var(--text-strong); padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.dw-grid { display: grid; grid-template-columns: auto auto; column-gap: 18px; row-gap: 2px; }
+.dw-sec { grid-column: 1 / -1; margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border); font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+.dw-k { white-space: nowrap; }
+.dw-v { text-align: right; color: var(--text-strong); }
+.dw-grid.wide { grid-template-columns: auto auto auto auto; }
+.data-window { top: 64px; max-height: calc(100% - 80px); }
+.dw-grid.wide3 { grid-template-columns: repeat(6, auto); }
+.dw-grid.wide .dw-sec, .dw-grid.wide3 .dw-sec { margin-top: 3px; padding-top: 2px; }
+.data-window.top { top: 8px; max-height: calc(100% - 16px); }
+.dw-grid.wide3 { font-size: 11px; column-gap: 12px; row-gap: 1px; }
+.data-window { top: 8px; max-height: calc(100% - 16px); }
+.legend.covered { visibility: hidden; }
+/* 関心銘柄タブのデータ表示は画面に浮かせる(小さいチャートの中には収まらないため) */
+.data-window.floating { position: fixed; top: 0; z-index: 30; max-height: calc(100vh - 8px); }
+body[data-view="chart"] .data-window.floating { display: none; }
+
+/* ---------- 銘柄検索の候補 ---------- */
+.search { position: relative; }
+.search input { width: 240px; }
+.search-results {
+  position: absolute; top: 36px; left: 0; z-index: 40;
+  width: 420px; max-height: 420px; overflow-y: auto;
+  margin: 0; padding: 4px 0; list-style: none;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.search-results li {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline;
+  padding: 7px 12px; cursor: pointer;
+}
+.search-results li.active { background: var(--blue-soft); }
+.search-results li.empty { display: block; color: var(--muted); cursor: default; }
+.s-code { color: var(--blue); }
+.s-name { color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-star { color: var(--amber); }
+.s-meta { grid-column: 2 / -1; font-size: 11px; color: var(--muted); }
+
+/* 判定の詳細の「関心銘柄」ボタン */
+.d-head { display: flex; }
+.star {
+  height: 24px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); font-size: 12px;
+}
+.star:hover { color: var(--text); border-color: var(--muted); }
+.star.on { color: var(--amber); border-color: var(--amber-soft); background: var(--amber-soft); }
+
+/* 検索候補の「関心銘柄」ボタン */
+.search-results .s-star {
+  border: 0; background: transparent; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 2px; cursor: pointer;
+}
+.search-results .s-star:hover { color: var(--text-strong); }
+.search-results .s-star.on { color: var(--amber); }
+/* チャート右上(価格軸の左)の「関心銘柄」「売買」ボタン */
+.chart-actions {
+  position: absolute; top: 8px; right: 84px; z-index: 7;
+  display: flex; gap: 6px;
+}
+.chart-star {
+  height: 26px; padding: 0 10px; font-size: 12px;
+  background: rgba(19, 23, 34, 0.85);
+}
+.chart-trade { color: var(--action-text); background: var(--action); border-color: var(--action); font-weight: 700; }
+.chart-star.on { background: rgba(58, 45, 12, 0.9); }
+
+/* ---------- 右パネルの幅・ウォッチリストの高さのつまみ ---------- */
+.sidebar { position: relative; }
+.v-resizer {
+  position: absolute; top: 0; bottom: 0; left: -7px; z-index: 12;
+  width: 10px; cursor: col-resize;
+}
+.h-resizer {
+  position: absolute; left: 0; right: 0; bottom: -7px; z-index: 12;
+  height: 10px; cursor: row-resize;
+}
+.v-resizer::after, .h-resizer::after { content: ""; position: absolute; background: transparent; transition: background 0.12s; }
+.v-resizer::after { top: 0; bottom: 0; left: 3px; width: 4px; }
+.h-resizer::after { left: 0; right: 0; top: 3px; height: 4px; }
+.v-resizer:hover::after, .v-resizer.dragging::after,
+.h-resizer:hover::after, .h-resizer.dragging::after { background: var(--blue); }
+body.resizing-x { cursor: col-resize; user-select: none; }
+.credit { font-size: 10px; color: var(--muted); text-decoration: none; opacity: 0.7; white-space: nowrap; }
+.credit:hover { opacity: 1; text-decoration: underline; }
+/* データ表示の見出し: 銘柄名 + 日付を左寄せ */
+.dw-date { text-align: left; display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.dw-name { font-size: 13px; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.dw-date { font-weight: 400; color: var(--muted); }
+.dw-name { font-weight: 600; }
+
+/* ---------- 株シミュレーター(仮想売買) ---------- */
+body[data-view="sim"] .layout,
+body[data-view="sim"] .grid-view,
+body[data-view="sim"] #judge-btn { display: none; }
+body:not([data-view="sim"]) .sim-view { display: none; }
+body[data-view="sim"] .data-window.floating { display: none; }
+.sim-view { height: calc(100% - 44px); display: flex; flex-direction: column; min-height: 0; }
+.sim-reset { display: flex; align-items: center; gap: 6px; }
+.sim-reset .filter { width: 130px; }
+.sim-summary {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;
+  position: relative; padding: 10px 12px; border-bottom: 4px solid var(--panel-2);
+}
+.s-card { padding: 8px 12px; border-radius: 6px; background: var(--panel); font-variant-numeric: tabular-nums; }
+.s-card .k { font-size: 11px; color: var(--muted); }
+.s-card .v { font-size: 18px; font-weight: 600; color: var(--text-strong); }
+.s-card .v.up { color: var(--up); }
+.s-card .v.down { color: var(--down); }
+.s-card .sub { font-size: 11px; color: var(--muted); min-height: 15px; }
+.s-loading { position: absolute; top: 6px; right: 8px; }
+.sim-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); }
+.sim-order { overflow-y: auto; padding: 10px 12px; border-right: 4px solid var(--panel-2); }
+.sim-main { overflow-y: auto; padding: 10px 12px; min-width: 0; }
+.sim-main .table-wrap { flex: none; margin-bottom: 14px; }
+.sim-h { margin: 12px 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; }
+.sim-order > .sim-h:first-child, .sim-main > .sim-h:first-child { margin-top: 0; }
+.sim-code { display: flex; gap: 6px; }
+.sim-code .filter { flex: 1; text-transform: uppercase; }
+.sim-note { font-size: 12px; margin-top: 12px; }
+.sim-quote { margin-top: 10px; }
+.sim-quote .d-price { margin: 4px 0 8px; }
+.sim-judge { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 10px; }
+.sim-qty-row { display: flex; align-items: center; gap: 6px; }
+.sim-qty-row .filter { width: 100px; }
+.sim-calc { margin: 8px 0; }
+.sim-calc .row, .sim-order .row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.sim-calc .k, .sim-order .row .k { color: var(--muted); }
+.sim-order .plan .box .k { color: var(--muted); }
+.sim-order .plan .box .p { font-size: 18px; }
+.sim-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.sim-actions .tb-btn { justify-content: center; height: 36px; font-size: 14px; }
+.tb-btn.primary.buy { background: var(--up); }
+.tb-btn.primary.buy:hover { background: #07806c; }
+.tb-btn.primary.sell { background: var(--down); }
+.tb-btn.primary.sell:hover { background: #d62d3b; }
+.tb-btn.primary.buy:disabled, .tb-btn.primary.sell:disabled { background: var(--panel-2); color: var(--muted); }
+.sim-msg { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 12px; }
+.sim-msg.ok { color: var(--up); background: var(--up-soft); }
+.sim-msg.error { background: var(--down-soft); }
+.tag.sell-alert { color: var(--down); background: var(--down-soft); }
+#sim-positions td, #sim-trades td { vertical-align: top; }
+#sim-positions small { font-size: 11px; }
+#sim-positions tr.empty, #sim-trades tr.empty { cursor: default; }
+.sell-cell { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+.sell-cell .filter { width: 80px; height: 26px; }
+#sim-watch tr.selected { background: var(--blue-soft); }
+#sim-watch .tb-btn.small { height: 24px; }
+.c-btn.buy { color: var(--up); }
+.c-btn.buy:hover { background: var(--up-soft); color: var(--up); }
+#sim-watch .unwatch-col { width: 32px; padding-left: 0; padding-right: 6px; text-align: center; }
+.sim-toggle {
+  border: 0; background: transparent; padding: 2px 6px 2px 0;
+  font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px;
+}
+.sim-toggle:hover { color: var(--text-strong); }
+.sim-total { display: flex; align-items: baseline; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sim-total:empty { display: none; }
+.sim-total .k { color: var(--muted); }
+.sim-total b { font-size: 16px; color: var(--text-strong); }
+.rank-summary { margin-top: 4px; color: var(--text); }
+
+/* 設定(左ツールバーの一番下の歯車から開く) */
+.tool-bottom { margin-top: auto; }
+button.status { border: 0; cursor: pointer; font-family: inherit; }
+.settings-dialog {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--panel); color: var(--text);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.settings-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.settings-form { padding: 16px 20px 18px; }
+.settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.settings-head h2 { margin: 0; font-size: 16px; color: var(--text-strong); }
+.settings-close { border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+.settings-close:hover { color: var(--text-strong); }
+.settings-sec { margin-top: 14px; }
+.settings-sec h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.settings-note { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+.settings-providers { display: grid; gap: 6px; }
+.settings-radio {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+.settings-radio:hover { background: var(--hover); }
+.settings-radio:has(input:checked) { border-color: var(--blue); background: var(--blue-soft); }
+.settings-radio input { margin-top: 3px; accent-color: var(--blue); }
+.settings-radio span { display: grid; gap: 2px; }
+.settings-radio small { color: var(--amber); font-size: 11px; }
+.settings-radio.unavailable b { color: var(--muted); }
+.settings-select {
+  width: 100%; height: 32px; padding: 0 8px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); font: inherit;
+}
+.settings-error { margin-top: 12px; padding: 8px 10px; border-radius: 6px; background: var(--down-soft); color: var(--down); font-size: 12px; }
+.settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.settings-about { padding-top: 14px; border-top: 1px solid var(--border); }
+.settings-about dl { display: grid; grid-template-columns: 88px 1fr; gap: 4px 12px; margin: 0; font-size: 12px; }
+.settings-about dt { color: var(--muted); }
+.settings-about dd { margin: 0; color: var(--text); word-break: break-all; }
+.settings-about a { color: var(--blue); }
+
+/* ---------- 売買ダイアログ(チャート右上・スクリーナーの「売買」から開く) ---------- */
+.trade-dialog { width: min(420px, calc(100vw - 32px)); }
+.trade-head { padding: 14px 18px 0; }
+.trade-head h2 { display: flex; align-items: center; gap: 8px; }
+.trade-head .tag { font-size: 11px; font-weight: 400; }
+.trade-body { max-height: min(70vh, 640px); overflow-y: auto; }
+/* シミュレーター タブの注文欄をそのまま入れるので、タブ用の区切り線とスクロールを外す */
+.trade-body .sim-order { border-right: 0; overflow: visible; padding: 8px 18px 4px; }
+.trade-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 18px 14px; border-top: 1px solid var(--border); font-size: 12px;
+}
+#screen-table .trade-col { width: 64px; text-align: center; }
+.trade-row-btn {
+  height: 24px; padding: 0 10px; font-size: 12px; font-weight: 700;
+  color: var(--action-text); border: 0; background: var(--action);
+}
+/* 「売買」ボタン(スクリーナーの各行・チャート右上・判定の詳細の見出し)の hover。
+   黄色に変えて、押せるボタンだとはっきり分かるようにする(白地からの変化が小さいと気づきにくい) */
+.trade-row-btn, .chart-trade, .d-head #sim-btn { cursor: pointer; transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.06s; }
+.trade-row-btn:hover, .chart-trade:hover, .d-head #sim-btn:hover {
+  color: var(--action-text); background: var(--amber); border-color: var(--amber);
+  box-shadow: 0 0 0 2px rgba(247, 166, 0, 0.35);
+}
+.trade-row-btn:active, .chart-trade:active, .d-head #sim-btn:active { transform: translateY(1px); box-shadow: none; }
+.trade-row-btn:focus-visible, .chart-trade:focus-visible, .d-head #sim-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* ---------- シミュレーター タブのコントラスト ----------
+   暗い背景に灰色の文字だと読みにくいので、見出し・銘柄名・数値を明るくし、行の区切りをはっきりさせる */
+.sim-view, .trade-dialog {
+  --sim-sub: #b2b5be; /* 見出し・補足(--muted より明るい) */
+  --sim-line: #3a3f4c; /* 行の区切り */
+}
+.sim-view .sim-h { color: var(--sim-sub); font-size: 12px; }
+.sim-view thead th { color: var(--sim-sub); font-weight: 600; background: var(--panel); border-bottom-color: var(--sim-line); }
+.sim-view tbody td { color: var(--text-strong); border-bottom-color: var(--sim-line); padding-top: 8px; padding-bottom: 8px; }
+.sim-view tbody td .muted { color: var(--sim-sub); }
+.sim-view tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
+.sim-view tbody tr:hover { background: var(--hover); }
+.sim-view tbody tr.selected { background: var(--blue-soft); }
+.sim-view tbody td.up, .sim-view tbody td .up, .sim-view tbody td.down, .sim-view tbody td .down { font-weight: 600; }
+.sim-view .c-code { font-weight: 600; }
+.sim-view .s-card .k, .sim-view .s-card .sub, .sim-calc .k, .sim-order .row .k, .sim-total .k { color: var(--sim-sub); }
+
+/* 上部バーは1行に収める。幅が足りないときは、ボタンを折り返さずに検索欄を縮める */
+.topbar > *, .topbar .segmented button, .topbar .status, .topbar .tb-btn { white-space: nowrap; flex-shrink: 0; }
+.topbar > .search { flex-shrink: 1; min-width: 0; }
+.topbar > .search input { width: 100%; min-width: 60px; max-width: 170px; }
+.trade-foot .tb-btn { white-space: nowrap; flex-shrink: 0; }
+
+/* 判定の詳細の見出しのボタン(シミュレーター・関心銘柄)。折り返さず、暗い背景でも読める明るさにする */
+.d-head .star { white-space: nowrap; flex-shrink: 0; color: var(--tab-text); border-color: #4a4f5c; }
+.d-head .star:hover { color: var(--text-strong); border-color: var(--tab-text); }
+.d-head .star.on { color: var(--amber); border-color: var(--amber); }
+.d-head #sim-btn { color: var(--action-text); background: var(--action); border-color: var(--action); font-weight: 700; }
+/* 幅が足りないときは、ボタンを切らずに次の行へ回す */
+.d-head { flex-wrap: wrap; row-gap: 6px; align-items: center; }
+
+/* =====================================================================
+   レスポンシブ(TradingView のスマホ版に倣う)
+   - 〜1100px: 右パネルを細くし、アプリ名の文字を省く
+   - 〜768px(スマホ): 1列に積んでページ全体をスクロールする。画面の切り替えタブは画面下に固定し、
+     上部バーは横スクロール、左のツールはチャートの上に横並び、ダイアログは下から出るシートにする。
+     JS(ドラッグでの幅・高さの変更、関心銘柄の列数)が入れるインラインの値は !important で上書きする
+   ===================================================================== */
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 48px minmax(0, 1fr) min(var(--side-w, 300px), 300px); }
+  .app-name { display: none; }
+}
+
+@media (max-width: 768px) {
+  :root { --bottom-nav-h: 56px; }
+  html, body { height: auto; min-height: 100%; }
+  body { overflow-x: hidden; overflow-y: auto; padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+
+  /* 上部バー: 1行のまま横にスクロールする(折り返すと高さが変わってチャートが押し下げられる) */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+  }
+  .topbar::-webkit-scrollbar { display: none; }
+  .topbar > .search { flex: 0 0 auto; }
+  .topbar > .search input { width: 120px; max-width: none; }
+  .topbar .sep { display: none; }
+
+  /* 画面の切り替えタブ: 画面下に固定する */
+  #views {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+    padding: 6px 8px env(safe-area-inset-bottom);
+    gap: 6px;
+    background: var(--panel); border-top: 1px solid var(--border);
+  }
+  #views button { flex: 1; height: 44px; font-size: 13px; }
+
+  /* チャート画面: 左のツール → チャート → スクリーナー → ウォッチリスト・判定の詳細 の順に縦に積む */
+  .layout { height: auto; display: flex; flex-direction: column; }
+  .toolbar {
+    flex-direction: row; justify-content: flex-start; padding: 4px 8px; gap: 2px;
+    border-right: 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .toolbar .tool { width: 40px; height: 40px; flex-shrink: 0; }
+  .tool-sep { width: 1px; height: 24px; margin: 0 4px; }
+  .tool-bottom { margin-top: 0; margin-left: auto; }
+  .center { display: block; }
+  .chart-wrap { height: 56vh; min-height: 300px; }
+  .legend .title { font-size: 14px; }
+  .legend .row { gap: 6px; font-size: 11px; }
+  /* 右上だと銘柄名の凡例と重なるので、時間軸の上の右寄せに置く */
+  .chart-actions { top: auto; bottom: 36px; right: 64px; }
+  .chart-star { height: 32px; padding: 0 12px; font-size: 13px; }
+  .rangebar { height: auto; min-height: 40px; flex-wrap: wrap; row-gap: 4px; padding: 4px 8px; }
+  .rangebar .sep { display: none; }
+  .rangebar .credit { order: 10; width: 100%; text-align: right; }
+
+  .panel { height: 70vh !important; border-bottom: 4px solid var(--panel-2); }
+  .panel.collapsed { display: none; }
+  .resizer, .v-resizer, .h-resizer { display: none; }
+  .panel-head { gap: 8px; }
+  .panel-head .spacer { display: none; }
+  .panel-head .filter, #screen-filter { width: 100%; }
+  .progress .bar { width: 100px; }
+
+  .sidebar { border-left: 0; }
+  .watch { height: auto !important; max-height: 50vh; }
+  .detail { overflow: visible; }
+
+  /* 関心銘柄タブ: 1列にする(JS が入れる列数を上書き) */
+  .grid-view { height: auto; }
+  .grid-scroll { overflow: visible; }
+  .grid { grid-template-columns: minmax(0, 1fr) !important; grid-auto-rows: 300px !important; }
+  #grid-cols, .grid-bar .small-label { display: none; }
+
+  /* シミュレーター タブ: 注文欄と表を縦に積み、表は横スクロールにする */
+  .sim-view { height: auto; }
+  .grid-bar { gap: 8px; }
+  .sim-total { white-space: normal; flex-wrap: wrap; width: 100%; }
+  .sim-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .s-card .v { font-size: 16px; }
+  .sim-body { display: block; }
+  .sim-order { overflow: visible; border-right: 0; border-bottom: 4px solid var(--panel-2); }
+  .sim-main { overflow: visible; }
+  .sim-main .table-wrap { overflow-x: auto; }
+
+  /* 表は横スクロール(列は減らさない)。タップしやすいよう行を高くする */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  tbody td { padding-top: 9px; padding-bottom: 9px; }
+  .trade-row-btn { height: 30px; padding: 0 12px; }
+
+  /* ダイアログ: 画面下から出るシートにする */
+  .settings-dialog {
+    width: 100vw; max-width: 100vw; max-height: 92vh;
+    margin: auto 0 0; border-radius: 14px 14px 0 0; border-bottom: 0;
+  }
+  .trade-body { max-height: calc(92vh - 120px); }
+  .settings-about dl { grid-template-columns: 76px 1fr; }
+}
