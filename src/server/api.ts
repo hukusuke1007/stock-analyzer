@@ -174,6 +174,19 @@ const STRATEGY_ERROR = `strategy は ${Object.keys(STRATEGIES).join(" / ")} の�
 // TanStack Start のサーバールート(src/routes/api/$.ts)から呼ぶ。画面のパスと分けるため /api 配下に置く
 export const app = new Hono<AuthEnv>().basePath("/api");
 
+// 別のサイトから来た API のリクエストは断る(CSRF 対策)。
+// Cookie は SameSite=Lax なので別サイトからの POST には付かないが、GET /api/screen のような
+// 重い処理や保存を伴う GET は、別サイトのリンクから開かれると Cookie 付きで届いてしまう。
+// ブラウザは Sec-Fetch-Site を必ず付けるので、それが same-origin / none 以外なら止める(curl などは付けないので通る)
+app.use("*", async (c, next) => {
+  const site = c.req.header("sec-fetch-site");
+  if (site === "cross-site" || site === "same-site") {
+    return c.json({ error: "別のサイトからのリクエストは受け付けません" }, 403);
+  }
+
+  await next();
+});
+
 // アカウント作成・ログイン・ログアウト・退会
 app.route("/auth", authRoutes);
 
@@ -191,7 +204,7 @@ app.use("*", async (c, next) => {
   return requireUser(c, async () => {
     const settings = await loadSettings(c.var.user.id);
 
-    await runWithSettings(settings, next);
+    await runWithSettings(c.var.user.id, settings, next);
   });
 });
 

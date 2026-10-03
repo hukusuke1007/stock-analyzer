@@ -25,10 +25,10 @@ export const APP_INFO = {
   x: "https://x.com/hobbydevelop",
 };
 
-// リクエストを出したユーザーの設定。AI の呼び出し(ai/)は深い所で設定を読むので、
+// リクエストを出したユーザーとその設定。AI の呼び出し(ai/)は深い所で設定を読むので、
 // 引数で渡し回さずにリクエストの処理全体から読めるようにする。
 // プロセス全体の変数に置くと、同時に来た別のユーザーのリクエストと設定が混ざる
-const requestSettings = new AsyncLocalStorage<Settings>();
+const requestContext = new AsyncLocalStorage<{ userId: string; settings: Settings }>();
 
 /**
  * ユーザーの設定を DB から読む。まだ保存していなければ既定値を返す。
@@ -39,17 +39,25 @@ export async function loadSettings(userId: string): Promise<Settings> {
 }
 
 /**
- * settings を今の設定として fn を実行する。fn の中から呼んだ getSettings() はこの値を返す。
+ * userId のユーザーのリクエストとして、settings を今の設定にして fn を実行する。
+ * fn の中から呼んだ getSettings()・getRequestUserId() はこの値を返す。
  */
-export function runWithSettings<T>(settings: Settings, fn: () => T): T {
-  return requestSettings.run(settings, fn);
+export function runWithSettings<T>(userId: string, settings: Settings, fn: () => T): T {
+  return requestContext.run({ userId, settings }, fn);
 }
 
 /**
  * 今のリクエストの設定を返す。リクエストの外(起動時など)では既定値。
  */
 export function getSettings(): Settings {
-  return requestSettings.getStore() ?? DEFAULTS;
+  return requestContext.getStore()?.settings ?? DEFAULTS;
+}
+
+/**
+ * 今のリクエストを出したユーザーの ID を返す。リクエストの外では null。
+ */
+export function getRequestUserId(): string | null {
+  return requestContext.getStore()?.userId ?? null;
 }
 
 export class SettingsError extends Error {}

@@ -1,4 +1,5 @@
 import type { Strategy, Verdict } from "../strategies/index.js";
+import { getRequestUserId } from "../settings.js";
 import { codexModel, runTurn } from "./codex.js";
 import { type DecisionInput, type DecisionResult, normalize, VERDICTS } from "./decisions.js";
 
@@ -110,7 +111,9 @@ async function withSlot(fn: () => Promise<void>) {
   }
 }
 
-// 指示(売買ルールと、決算・ニュースの扱い)とモデルが同じ銘柄どうしをためて、まとめて聞く
+// 指示(売買ルールと、決算・ニュースの扱い)とモデルが同じ銘柄どうしをためて、まとめて聞く。
+// ユーザーごとにも分ける。銘柄の材料にはユーザーが貼ったニュースの文が入るので、別のユーザーの銘柄と同じ問い合わせに入れると、
+// その文に紛れ込ませた指示が別のユーザーの判定を左右しうるため
 const queues = new Map<string, { items: Item[]; timer: NodeJS.Timeout | null }>();
 
 function flush(key: string) {
@@ -126,7 +129,7 @@ let seq = 0;
 
 export function askCodex(input: DecisionInput): Promise<DecisionResult> {
   const model = codexModel();
-  const key = `${model}\n${input.strategy.id}\n${input.rules}`;
+  const key = `${getRequestUserId() ?? ""}\n${model}\n${input.strategy.id}\n${input.rules}`;
   return new Promise((resolve, reject) => {
     let q = queues.get(key);
     if (!q) queues.set(key, (q = { items: [], timer: null }));
