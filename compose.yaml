@@ -35,6 +35,9 @@ services:
       DATABASE_URL: ${APP_DATABASE_URL:-http://db:8080}
       # 判定の AI を Jev にするときだけ使う。手元の .env の値を渡す
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      # Codex の認証情報。どちらかを渡すと、コンテナの中の Codex が使える(docker/entrypoint.sh)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CODEX_AUTH_JSON: ${CODEX_AUTH_JSON:-}
     depends_on:
       - db
     profiles:

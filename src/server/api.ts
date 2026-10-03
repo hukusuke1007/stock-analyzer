@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { codexAvailable, codexModel, listCodexModels, type RankItem, type Ranking, rankStocks } from "./ai/codex.js";
+import { codexAvailable, codexModel, listCodexModels } from "./ai/codex.js";
+import { describeRankingBackend, RANK_LIMIT, type RankItem, type Ranking, rankingBackend, rankStocks } from "./ai/ranking.js";
+import { workersAiAvailable } from "./ai/workers-ai.js";
 import {
   askDecision,
   decisionCapacity,
@@ -161,7 +163,7 @@ async function judge(strategy: Strategy, a: Analysis, userNews: string | undefin
     materials: { earnings: m.earnings, news: m.news },
     technicals: a.technicals,
     decision,
-    ranking: null as RankItem | null, // Codex のランク付け(rankResults で入れる)
+    ranking: null as RankItem | null, // AI のランク付け(rankResults で入れる)
   };
 }
 
@@ -211,10 +213,12 @@ app.use("*", async (c, next) => {
 app.get("/health", async (c) =>
   c.json({
     ok: true,
-    // 判定(Decisions)に使う AI と、使えるかどうか。ランク付けはいつも Codex
+    // 判定(Decisions)に使う AI と、使えるかどうか
     decisions: { provider: decisionsProvider(), label: PROVIDERS[decisionsProvider()], available: await decisionsAvailable() },
     codex: await codexAvailable(),
     codexModel: codexModel(),
+    // ランク付けに使う AI(Codex を優先し、使えなければ Workers AI)。どちらもなければ null
+    ranking: await rankingBackend().then((backend) => (backend ? { provider: backend, ...describeRankingBackend(backend) } : null)),
   }),
 );
 
@@ -226,8 +230,14 @@ async function settingsPayload(settings: Settings = getSettings()) {
     settings,
     options: {
       providers: [
-        { id: "codex", label: PROVIDERS.codex, available: codex, note: codex ? null : "Codex CLI のインストールとログイン(codex login)が必要" },
+        { id: "codex", label: PROVIDERS.codex, available: codex, note: codex ? null : "Codex CLI のインストールとログインが必要(手元は codex login、コンテナは OPENAI_API_KEY か CODEX_AUTH_JSON)" },
         { id: "jev", label: PROVIDERS.jev, available: jevAvailable(), note: jevAvailable() ? null : ".env に TYPESAFE_API_KEY が必要" },
+        {
+          id: "workers-ai",
+          label: PROVIDERS["workers-ai"],
+          available: workersAiAvailable(),
+          note: workersAiAvailable() ? null : "Cloudflare Workers で動かし、wrangler.jsonc の AI のバインディングを設定したときだけ使える",
+        },
       ],
       codexModels: models,
     },
@@ -384,7 +394,7 @@ app.post("/judge", async (c) => {
 
 // 東証プライム全銘柄を調べる。テクニカル値は全銘柄で計算し、
 // 明らかに見送りの銘柄(strategy.isCandidate が false)は AI に聞かず、結果にも含めない。
-// 残った候補は Decisions(Codex App Server 経由の GPT-6 Luna)で判定し、上位を Codex でランク付けする。
+// 残った候補は設定の判定の AI(Codex・Workers AI・Jev)で判定し、上位を AI(Codex、使えなければ Workers AI)でランク付けする。
 // 時間がかかるので SSE で返す。途中は progress イベント、最後に result イベントで全結果を送る。
 app.get("/screen", (c) => {
   const strategy = resolveStrategy(c.req.query("strategy"));
@@ -419,7 +429,7 @@ app.get("/screen", (c) => {
         return strategy.isCandidate(r.value.checks) ? [{ listing: l, a: r.value }] : [];
       });
 
-      // 候補の判定は、今の設定の AI がまとめて聞ける件数まで並べる(Codex は多め、Jev は少なめ)。
+      // 候補の判定は、今の設定の AI がまとめて聞ける件数まで並べる(Codex は多め、Workers AI は中くらい、Jev は少なめ)。
       // 日足は取得済みなので、ここで Yahoo に投げるのは決算オプションのときの予定日だけ
       const judged = await mapPool(
         candidates,
@@ -488,35 +498,37 @@ function sortResults<T extends { verdict: Verdict; decision: DecisionResult | nu
   );
 }
 
-// Codex に渡す銘柄の上限。候補が多いときは sortResults の上位だけをランク付けし、残りはその後ろに並べる
-const RANK_LIMIT = 30;
-
 type Judged = Awaited<ReturnType<typeof judge>> & { sector?: string };
-type RankingInfo = Omit<Ranking, "items"> & { ranked: number; error: string | null };
+// provider はランク付けに使った AI の表示名(Codex / Workers AI)
+type RankingInfo = Omit<Ranking, "items"> & { provider: string; ranked: number; error: string | null };
 
-// Codex App Server で判定済みの銘柄をランク付けし、その順に並べ替える。
-// Codex を使えない・失敗したときは sortResults の順のまま返す
+// 判定済みの銘柄を AI(Codex、使えなければ Workers AI)でランク付けし、その順に並べ替える。
+// 候補が多いときは sortResults の上位だけをランク付けし、残りはその後ろに並べる。
+// AI を使えない・失敗したときは sortResults の順のまま返す
 async function rankResults<T extends Judged>(strategy: Strategy, judged: T[]): Promise<{ results: T[]; ranking: RankingInfo | null }> {
   const sorted = sortResults(judged);
-  if (sorted.length < 2 || !(await codexAvailable())) return { results: sorted, ranking: null };
+  const backend = sorted.length < 2 ? null : await rankingBackend();
+  if (!backend) return { results: sorted, ranking: null };
 
-  const head = sorted.slice(0, RANK_LIMIT);
+  const limit = RANK_LIMIT[backend];
+  const provider = describeRankingBackend(backend).label;
+  const head = sorted.slice(0, limit);
   try {
-    const r = await rankStocks(strategy.rules, head.map(rankInput));
+    const r = await rankStocks(strategy.rules, head.map(rankInput), backend);
     const byCode = new Map(r.items.map((i) => [i.code, i]));
     for (const x of head) x.ranking = byCode.get(x.code) ?? null;
     head.sort((a, b) => (a.ranking?.rank ?? Infinity) - (b.ranking?.rank ?? Infinity));
     return {
-      results: [...head, ...sorted.slice(RANK_LIMIT)],
-      ranking: { model: r.model, summary: r.summary, ranked: head.length, error: null },
+      results: [...head, ...sorted.slice(limit)],
+      ranking: { provider, model: r.model, summary: r.summary, ranked: head.length, error: null },
     };
   } catch (e) {
-    console.error(`Codex のランク付けに失敗: ${e}`);
-    return { results: sorted, ranking: { model: "", summary: "", ranked: 0, error: String(e) } };
+    console.error(`${provider} のランク付けに失敗: ${e}`);
+    return { results: sorted, ranking: { provider, model: "", summary: "", ranked: 0, error: String(e) } };
   }
 }
 
-// Codex に渡す1銘柄分の材料。トークンを抑えるため、判定に効く値だけに絞る
+// ランク付けの AI に渡す1銘柄分の材料。トークンを抑えるため、判定に効く値だけに絞る
 function rankInput(r: Judged): { code: string; [key: string]: JsonValue } {
   const next = r.materials.earnings?.next;
   return {

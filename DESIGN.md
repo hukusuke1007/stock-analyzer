@@ -15,7 +15,7 @@ flowchart TD
     B -->|"値動きの読み取りと総合判断（Decisions）"| C["判定<br/>買い / 打診買い / 見送り"]
     C -->|"最終判定のガード: 悪材料・決算・食い違い（コード）"| D["最終判定"]
     D -->|"判定 → 条件の充足数 → 買いの確率 の順に並べ替え"| E["判定順"]
-    E -->|"ランク付け: 上位30件を見比べる（Codex）"| F["ランキング<br/>順位・スコア・理由"]
+    E -->|"ランク付け: 上位30件を見比べる（Codex / Workers AI）"| F["ランキング<br/>順位・スコア・理由"]
 ```
 
 | 段階               | 担当      | やること                                                                    |
@@ -24,7 +24,7 @@ flowchart TD
 | 値動きの読み取り   | Decisions | 数値だけでは決まらない条件（下げ止まり / トレンド中の押し目か）の確率を出す |
 | 総合判断           | Decisions | ルールの要約・指標・条件の判定結果から、買い / 打診買い / 見送りを選ぶ      |
 | 最終判定のガード   | コード    | 悪材料・決算・値動きの読み取りと総合判断の食い違いで、判定を下げる          |
-| ランク付け         | Codex     | 判定順の上位30件を比べ、有望な順に並べる                                    |
+| ランク付け         | Codex / Workers AI | 判定順の上位30件を比べ、有望な順に並べる                                    |
 
 Decisions は、AI に1銘柄ずつ選択肢の決まった問いに答えさせる判定を指す（使う AI と送り方は「AI の使い分け」を参照）。
 `/judge`（銘柄を指定して調べる）は候補の絞り込みをせず、指定した銘柄をすべて値動きの読み取りに進める。
@@ -168,9 +168,11 @@ AI の担当は大きく2つに分かれる。
 | Decisions  | 1銘柄ごとの判定（値動きの形・悪材料・総合判断）                                            | 選択肢の決まった問いなので、軽いモデルで答えられる。スキャンの候補は数百件あり、1件あたりの速さを優先する |
 | ランク付け | 判定済みの銘柄（上位30件）をまとめて比べ、順位・スコア・理由を付ける                       | 銘柄どうしの比較は、1件ずつの判定からは出てこない。対象が30件までなので、判定より推論を深くできる         |
 
-Decisions に使う AI は、画面の設定ダイアログで Codex（既定）と Jev から選ぶ。
-ランク付けは、どちらを選んでも Codex で行う。
-Codex は Codex App Server を通して呼び、認証には Codex CLI のログイン（ChatGPT アカウント）をそのまま使うので、API キーを持たずに動かせる。
+Decisions に使う AI は、画面の設定ダイアログで Codex（Node の既定）・Workers AI（Cloudflare Workers の既定）・Jev から選ぶ。
+ランク付けは、Codex を使えれば Codex、使えなければ Workers AI で行う。
+Codex は Codex App Server を通して呼び、手元では Codex CLI のログイン（ChatGPT アカウント）をそのまま使うので、API キーを持たずに動かせる。
+コンテナでは、シークレットで渡した OpenAI の API キー(または ChatGPT のログイン情報)で、起動時に Codex にログインする(`docker/entrypoint.sh`)。
+Cloudflare Workers はプロセスを起動できず Codex を使えないので、Cloudflare の Workers AI に同じ問いを JSON Mode で聞く(`src/server/ai/workers-ai.ts`)。
 Codex で使うモデルも設定ダイアログで選び（既定は `gpt-6-luna`）、Decisions とランク付けでは推論の深さだけを変える（Decisions は `low`、ランク付けは `medium`）。
 
 AI を使えないときや呼び出しに失敗したときも、全体は止めない。
@@ -189,10 +191,12 @@ Decisions の送り先は、設定ダイアログで選んだ AI で決まる（
 
 | 判定の AI       | 送り先                                                                           | 送り方                                                                                    |
 | --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `codex`（既定） | Codex App Server。モデルは設定の Codex のモデル（既定 `gpt-6-luna`、推論 `low`） | 20件ずつ1ターンにまとめ、同時に6ターンまで回す（`src/server/ai/decisions-codex.ts`）             |
+| `codex`（Node の既定） | Codex App Server。モデルは設定の Codex のモデル（既定 `gpt-6-luna`、推論 `low`） | 20件ずつ1ターンにまとめ、同時に6ターンまで回す（`src/server/ai/decisions-batch.ts`）             |
+| `workers-ai`（Workers の既定） | Cloudflare Workers AI。モデルは `WORKERS_AI_MODEL`（既定 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`） | 5件ずつ1回にまとめる（`src/server/ai/decisions-batch.ts`）。文脈が短く、答えの形も崩れやすいので Codex より少なくし、形の崩れた答えの銘柄は数値条件だけで判定する |
 | `jev`           | TypeSafe AI の Jev（判定専用の API。`systemOne`）                                | 1銘柄ずつ1リクエスト、同時8件まで（`src/server/ai/decisions-jev.ts`）。`TYPESAFE_API_KEY` が要る |
 
-どちらに送っても、渡すもの（ルールの要約・指標・条件の判定結果・ニュース・決算）と返ってくる形は同じで、`src/server/ai/decisions.ts` が振り分ける。
+どこに送っても、渡すもの（ルールの要約・指標・条件の判定結果・ニュース・決算）と返ってくる形は同じで、`src/server/ai/decisions.ts` が振り分ける。
+まとめて聞く判定は、ユーザーごとにも分けてまとめる。銘柄の材料にはユーザーが貼ったニュースの文が入るので、別のユーザーの銘柄と同じ問い合わせに入れると、その文に紛れ込ませた指示が別のユーザーの判定を左右しうるからである。
 既定を Codex にしているのは、API キーなしで動かせるからである。
 
 Codex で1ターンに1銘柄ずつ聞くと、スキャンの候補が数百件あるので時間がかかる。
@@ -210,11 +214,12 @@ Codex で1ターンに1銘柄ずつ聞くと、スキャンの候補が数百件
 
 ### ランク付け
 
-判定済みの銘柄を1ターンでまとめて Codex（設定の Codex のモデル、推論 `medium`）に渡し、`ranking[]`（`code` / `score` / `reason`）と、上位の傾向をまとめた `summary` を返させる。
+判定済みの銘柄を1回でまとめて AI に渡し、`ranking[]`（`code` / `score` / `reason`）と、上位の傾向をまとめた `summary` を返させる（`src/server/ai/ranking.ts`）。
+AI は Codex（設定の Codex のモデル、推論 `medium`）を優先し、使えなければ Workers AI を使う。
 
 - 渡すのは、判定・条件の成否・テクニカル指標・R/R・Decisions の確率・次回決算・ニュースの見出し（5件まで）に限る。トークンを抑えるため、判定に関わる値だけに絞っている
 - 重視する順は「条件の充足度 > 判定と判定の確率 > 悪材料・決算の近さなどのリスク > R/R」と指示している
-- 候補が多いときは判定順の上位30件だけをランク付けし、31件目以降は判定順のまま後ろに置く。全件を渡すと、時間とトークンがかかりすぎるからである
+- 候補が多いときは判定順の上位30件（Workers AI は文脈が短いので15件）だけをランク付けし、それより後ろは判定順のまま置く。全件を渡すと、時間とトークンがかかりすぎるからである
 - 返ってきた順位に抜けや重複があれば、重複は除き、抜けた銘柄は最後に回す
 - 判定した銘柄が1件だけのときは、比べる相手がいないのでランク付けしない
 
@@ -268,9 +273,11 @@ src/
     ├── simulator.ts     # 株シミュレーター(仮想売買の約定・損益の計算。同時の注文は口座の revision で検出してやり直す)
     ├── ai/
     │   ├── decisions.ts       # Decisions(銘柄ごとの判定)の共通部分と、設定での振り分け
-    │   ├── decisions-codex.ts # Codex App Server にまとめて聞く
+    │   ├── decisions-batch.ts # Codex App Server か Workers AI に、銘柄をまとめて聞く
     │   ├── decisions-jev.ts   # TypeSafe AI の Jev に1件ずつ聞く
-    │   └── codex.ts           # Codex App Server(JSON-RPC over stdio)のクライアントとランク付け
+    │   ├── ranking.ts         # ランク付け(Codex、使えなければ Workers AI)
+    │   ├── workers-ai.ts      # Cloudflare Workers AI のクライアント(JSON Mode)
+    │   └── codex.ts           # Codex App Server(JSON-RPC over stdio)のクライアント
     ├── prime.ts         # JPX の上場銘柄一覧からプライム銘柄を取る(SheetJS)
     ├── materials.ts     # 決算発表日(JPX / Yahoo)とニュース(Google ニュース)の取得
     ├── technicals.ts    # 日足の取得(Yahoo Finance)とテクニカル指標の計算
@@ -279,7 +286,8 @@ src/
         ├── rebound.ts   # 急落リバウンド
         └── swing.ts     # スイング
 compose.yaml             # ローカルの SQLite(sqld)・PostgreSQL と、本番と同じイメージのアプリ
-Dockerfile               # Node のサーバーのイメージ(Cloud Run・ECS など)
+Dockerfile               # Node のサーバーのイメージ(Cloud Run・ECS など。Codex CLI を含む)
+docker/entrypoint.sh     # コンテナの起動(Codex へのログイン → マイグレーション → サーバー)
 wrangler.jsonc           # Cloudflare Workers と D1 の設定
 vite.config.ts           # ビルドの設定(DEPLOY_TARGET で Node / Cloudflare を切り替え、DB の接続も差し替える)
 ```

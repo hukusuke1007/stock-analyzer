@@ -11,12 +11,14 @@ import { defineConfig } from "vite";
 // - cloudflare: Cloudflare Workers 向け(wrangler.jsonc)。dev でも Workers の実行環境(workerd)で動く
 const target = process.env.DEPLOY_TARGET === "cloudflare" ? "cloudflare" : "node";
 
-// DB の接続はビルドの種類で差し替える。Workers では TCP の PostgreSQL のドライバーなどを bundle に入れず、D1 / Turso だけを扱う
+// DB の接続と Workers AI のバインディングはビルドの種類で差し替える。
+// Workers では TCP の PostgreSQL のドライバーなどを bundle に入れず、Node では Workers 専用のモジュール(cloudflare:workers)を読まない
 const dbConnection = fileURLToPath(new URL(`./src/server/db/connection.${target}.ts`, import.meta.url));
+const workersAiBinding = fileURLToPath(new URL(`./src/server/ai/workers-ai-binding.${target}.ts`, import.meta.url));
 
 export default defineConfig({
   server: { port: Number(process.env.PORT ?? 3000) },
-  resolve: { alias: { "#db-connection": dbConnection } },
+  resolve: { alias: { "#db-connection": dbConnection, "#workers-ai-binding": workersAiBinding } },
   plugins: [
     // Cloudflare のプラグインは、TanStack Start のサーバー側(ssr)の環境を Workers で動かすので先に置く
     ...(target === "cloudflare" ? [cloudflare({ viteEnvironment: { name: "ssr" } })] : []),

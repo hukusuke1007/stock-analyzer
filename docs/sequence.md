@@ -10,8 +10,8 @@
 | Strategy | `src/server/strategies/rebound.ts` / `swing.ts`（`strategy` で選ぶ） |
 | JPX      | 東証上場銘柄一覧（`data_j.xlsx`）。`src/server/prime.ts` が取得      |
 | Yahoo    | Yahoo Finance chart API（日足）。`src/server/technicals.ts` が取得   |
-| Decisions | 銘柄ごとの判定。既定は Codex App Server 経由の GPT-6 Luna(`src/server/ai/decisions-codex.ts`)、設定で Jev を選んだら TypeSafe AI の Jev(`src/server/ai/decisions-jev.ts`) |
-| Codex    | Codex App Server(`codex app-server`、stdio の JSON-RPC)の GPT-6 Luna。ランク付け。`src/server/ai/codex.ts` が呼ぶ |
+| Decisions | 銘柄ごとの判定。Node の既定は Codex App Server 経由の GPT-6 Luna、Cloudflare Workers の既定は Workers AI(`src/server/ai/decisions-batch.ts`)。設定で Jev を選んだら TypeSafe AI の Jev(`src/server/ai/decisions-jev.ts`) |
+| Codex    | ランク付け。Codex App Server(`codex app-server`、stdio の JSON-RPC)の GPT-6 Luna。Codex を使えない Workers では Workers AI(`src/server/ai/ranking.ts`) |
 
 ## `/api/screen`: 東証プライム全銘柄を調べる
 

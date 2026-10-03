@@ -118,3 +118,19 @@ UI は TanStack Start(Router・Query)と Vite の React アプリに作り直し
 - [x] Compose に PostgreSQL を足し、PostgreSQL 版で API とシミュレーターの同時注文を確かめる
 - [x] 既存の JSON の取り込み(`pnpm db:import`)を Repository 経由にして、どの DB にも入れられるようにする
 - [x] `HOW_TO_DEPLOY.md` の GCP を Cloud Run + Cloud SQL、AWS を ECS Express Mode + RDS に書き換える
+
+## 15. コンテナで Codex を使う
+
+- [x] Docker イメージに Codex CLI を入れる(版を固定する)
+- [x] 起動時に、シークレットから渡された `OPENAI_API_KEY`(推奨)か `CODEX_AUTH_JSON`(ChatGPT のログイン情報)で Codex にログインする
+- [x] Codex App Server が起動するだけでなく、ログインしているときだけ Codex を「使える」とする
+- [x] 手元のコンテナで、ログインの有無に応じて Codex の状態が切り替わることを確かめる
+- [x] `HOW_TO_DEPLOY.md` に、GCP の Secret Manager・AWS の Secrets Manager から認証情報を渡す手順と、Cloudflare Workers では Codex を使えない理由を書く
+
+## 16. Cloudflare Workers では Workers AI で AI 機能を動かす
+
+- [x] 判定の AI の選択肢に Workers AI を足し、Workers では既定にする
+- [x] Codex と同じ問い合わせ(まとめて聞く判定・ランク付け)を Workers AI の JSON Mode でも行えるようにする
+- [x] ランク付けは、Codex を使えなければ Workers AI で行う。上部バーと設定ダイアログにランク付けの AI を出す
+- [ ] `wrangler.jsonc` に AI のバインディングを足し、Workers で動作を確かめる(バインディングは追加済み。Workers AI を実際に呼ぶ確認は、wrangler へのログイン待ち)
+- [x] `HOW_TO_DEPLOY.md`・README・DESIGN.md を更新する

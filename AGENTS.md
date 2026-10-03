@@ -32,7 +32,7 @@ DB の読み書きを変えたら、`src/server/db/repository.sqlite.ts` と `re
 - `src/server/api.ts` — API(Hono、`/api` 配下)。エンドポイント、判定の組み立て(`judge`)、並び替えとランク付けの呼び出し。`src/routes/api/$.ts` から呼ばれる
 - `src/server/auth.ts` — アカウント作成・ログイン・ログアウト・退会と、ログインが要る API の確認
 - `src/server/db/` — DB の読み書きの窓口(`Repository`)と、SQLite 版・PostgreSQL 版の実装・スキーマ・接続先の選択。ユーザーのデータはすべて `user_id` で分ける
-- `src/server/ai/` — AI の呼び出し。判定(Decisions)は `decisions.ts` がユーザーの設定(`src/server/settings.ts`、UI の設定ダイアログで変更)の `decisionsProvider`(`codex` 既定 / `jev`)で振り分ける。ランク付けは `codex.ts`
+- `src/server/ai/` — AI の呼び出し。判定(Decisions)は `decisions.ts` がユーザーの設定(`src/server/settings.ts`、UI の設定ダイアログで変更)の `decisionsProvider`(`codex`(Node の既定) / `workers-ai`(Workers の既定) / `jev`)で振り分ける。ランク付けは `ranking.ts`(Codex、使えなければ Workers AI)
 - `src/server/strategies/` — 売買ルール。増やすときは `Strategy` 型のオブジェクトを作り、`index.ts` の `STRATEGIES` に登録する
 - `src/server/technicals.ts` — 日足の取得とテクニカル指標。画面のインジケーター(`src/lib/indicators.ts`)も同じ式で計算しているので、式を変えたら両方を直す
 - `src/routes/`・`src/components/`・`src/lib/` — 画面(React + TanStack Router / Query / Store、lightweight-charts)

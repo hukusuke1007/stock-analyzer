@@ -97,7 +97,7 @@ export function DetailPanel({ code, barsData, loadError, judgment }: Props) {
       {r && <MaterialsSection result={r} maxHoldingDays={strategy?.maxHoldingDays ?? 10} />}
       {r?.ranking && (
         <div className="d-sec">
-          <h4>Codex ランキング</h4>
+          <h4>AI ランキング</h4>
           <div className="plan-meta">
             <span>
               順位 <b>{r.ranking.rank}位</b>
@@ -373,7 +373,7 @@ function DecisionSection({ result }: { result: JudgeResult }) {
           {bar(dec.qualitative.label, dec.qualitative.probability, C.blue)}
           {dec.badNews != null && bar("悪材料", dec.badNews, C.down)}
           <div className="model">
-            {dec.provider === "jev" ? "Jev" : "Codex"} / model: {dec.model}
+            {{ jev: "Jev", codex: "Codex", "workers-ai": "Workers AI" }[dec.provider]} / model: {dec.model}
           </div>
         </>
       ) : (

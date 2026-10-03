@@ -38,15 +38,40 @@ SQLite 系(sqld・Turso・D1)と PostgreSQL では SQL の方言が違うので�
 | --------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`        | Node では○   | 接続先。sqld は `http://ホスト:8080`、Turso は `libsql://〜`、PostgreSQL は `postgresql://ユーザー:パスワード@ホスト:5432/DB 名`。Workers で D1 を使うときは設定しない |
 | `DATABASE_AUTH_TOKEN` | Turso のとき | Turso のデータベースのトークン                                                                                                                                         |
+| `OPENAI_API_KEY`      |              | コンテナで Codex を使うときの OpenAI の API キー(推奨)。起動時にこれで Codex にログインする                                                                          |
+| `CODEX_AUTH_JSON`     |              | コンテナで Codex を ChatGPT のログインで使うときの、手元の `~/.codex/auth.json` の中身。`OPENAI_API_KEY` があればそちらを使う                                          |
 | `TYPESAFE_API_KEY`    |              | 判定の AI を Jev にするときのキー                                                                                                                                      |
+| `WORKERS_AI_MODEL`    |              | Workers で使う Workers AI のモデル(既定 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`)                                                                                  |
 | `PORT`                |              | Node のサーバーが待ち受けるポート(既定 3000)                                                                                                                           |
 
 PostgreSQL の URL のパスワードに `@`・`:`・`/` などの記号を含めるときは、URL エンコードする。
 
-判定の AI のうち Codex は、サーバーで `codex` コマンドを起動して ChatGPT アカウントのログインを使う。
-Docker イメージには Codex CLI を入れていないうえ、Cloudflare Workers ではプロセスを起動できないので、クラウドに置いた場合は Codex を使えない。
-クラウドで AI の判定を使うなら `TYPESAFE_API_KEY` を設定し、画面の設定で判定の AI を Jev にする。
-どちらの AI も使えないときは、数値条件だけで判定する。
+API キーやトークンなどの秘密の値は、ホスティング先のシークレットの仕組み(GCP の Secret Manager・AWS の Secrets Manager・Cloudflare Workers のシークレット)に入れ、環境変数として渡す。
+リポジトリやイメージには書かない。
+
+### AI(判定とランク付け)
+
+判定(Decisions)とランク付けに使う AI は、置き場所ごとに次のとおりである。
+判定の AI は画面の設定で切り替えられ、どこでも Jev(`TYPESAFE_API_KEY`)を選べる。
+使える AI がないときは、数値条件だけで判定し、ランク付けをせずに判定順に並べる。
+
+| 置き場所 | 判定の既定 | ランク付け | 必要なもの |
+| --- | --- | --- | --- |
+| ローカル(`pnpm dev`) | Codex | Codex | 手元で `codex login` |
+| Docker・Cloud Run・ECS | Codex | Codex | シークレットの `OPENAI_API_KEY`(または `CODEX_AUTH_JSON`) |
+| Cloudflare Workers | Workers AI | Workers AI | `wrangler.jsonc` の AI のバインディング(設定済み) |
+
+Codex は、サーバーで `codex` コマンドを起動して使う。
+Docker イメージには Codex CLI を入れてあり、コンテナは起動時に、環境変数で渡した認証情報で Codex にログインする(`docker/entrypoint.sh`)。
+認証情報は2通りある。
+
+- `OPENAI_API_KEY`(推奨): OpenAI の API キー。Codex の公式ドキュメントが、自動化の環境では ChatGPT のログイン情報を共有せず API キーを使うよう勧めている。問い合わせは API の従量課金になり、アプリの全ユーザーの分がこのキーに請求される
+- `CODEX_AUTH_JSON`: 手元で `codex login` して作られた `~/.codex/auth.json` の中身。あなたの ChatGPT の契約を、アプリの全ユーザーが使うことになる。また、Codex はログインのトークンを使いながら更新するが、更新したトークンはコンテナの中にしか残らないので、コンテナを作り直すとシークレットの古いトークンでログインし直すことになり、失敗する可能性がある。失敗したら、手元でログインし直した `auth.json` でシークレットを更新する
+
+Cloudflare Workers はプロセスを起動できないので、Codex を使えない。
+代わりに Cloudflare の Workers AI を使う。Codex と同じ指示と答えの形(JSON Schema)で問い合わせるが、モデルが小さく、文脈の長さも短い(24,000 トークン)ので、まとめて聞く銘柄数とランク付けする銘柄数(15件)を減らしている。
+Workers AI は答えが JSON Schema どおりになることを保証しないので、形の崩れた答えの銘柄は数値条件だけで判定する。
+利用料は Cloudflare のアカウントに請求される。
 
 ### 公開する前に確認すること
 
@@ -66,6 +91,12 @@ docker compose --profile app up -d --build
 `db`(sqld)と `app`(アプリ)が立ち上がり、`http://localhost:3000` で開ける。
 アプリのコンテナは起動のたびにマイグレーションを適用してから待ち受ける。
 データはボリュームに残るので、`docker compose down` してもアカウントや口座は消えない(`down -v` は消える)。
+
+コンテナの中の Codex を使うときは、認証情報を環境変数で渡す(compose.yaml がコンテナに渡す)。
+
+```bash
+OPENAI_API_KEY="sk-..." docker compose --profile app up -d --build
+```
 
 Cloud SQL・RDS と同じ PostgreSQL で確かめるときは、`postgres` も立ててアプリの接続先を切り替える。
 
@@ -106,6 +137,8 @@ D1 には1行 2MB・1つの SQL 文のバインド変数100個などの上限が
    pnpm deploy:cloudflare
    ```
 
+判定とランク付けは Workers AI で行う(`wrangler.jsonc` の `"ai": { "binding": "AI" }`)。追加の設定は要らない。
+
 4. Jev を使う場合は、キーを Workers のシークレットに登録する。
 
    ```bash
@@ -116,6 +149,7 @@ D1 には1行 2MB・1つの SQL 文のバインド変数100個などの上限が
 独自ドメインで公開する場合は、Cloudflare のダッシュボードで Workers に Custom Domain を追加する。
 
 手元で Workers の実行環境とローカルの D1 のまま確かめたいときは、ローカルの D1 にマイグレーションを当ててから、Workers 向けにビルドして起動する。
+Workers AI は手元で動かすときも Cloudflare 上のモデルを使うので、先に `pnpm exec wrangler login` しておく(未ログインだと起動できない)。
 
 ```bash
 pnpm exec wrangler d1 migrations apply stock-analyzer --local
@@ -188,6 +222,15 @@ Cloud Run は、Cloud SQL のインスタンスを Unix ソケット(`/cloudsql/
    ```
 
 コンテナは起動のたびに `drizzle-pg/` のマイグレーションを適用するので、テーブルを作る手順は要らない。
+Codex を使うときは、OpenAI の API キーも Secret Manager に入れ、`--set-secrets` に足して渡す(手順4のシークレットを読むロールで読める)。
+
+```bash
+printf '%s' "sk-..." | gcloud secrets create stock-analyzer-openai-api-key --data-file=-
+# gcloud run deploy に足す
+--set-secrets DATABASE_URL=stock-analyzer-database-url:latest,OPENAI_API_KEY=stock-analyzer-openai-api-key:latest
+```
+
+ChatGPT のログインで使うときは、`OPENAI_API_KEY` の代わりに `~/.codex/auth.json` の中身を入れたシークレットを `CODEX_AUTH_JSON` として渡す(`gcloud secrets create stock-analyzer-codex-auth --data-file=$HOME/.codex/auth.json`)。
 Jev を使う場合は、`TYPESAFE_API_KEY` も同じように Secret Manager に入れて `--set-secrets` で渡す。
 デプロイが終わると、`https://stock-analyzer-〜.run.app` の URL が表示される。
 
@@ -234,7 +277,13 @@ Docker イメージには AWS が公開している RDS の CA 証明書の束�
      --secret-string "postgresql://app:パスワード@<エンドポイント>:5432/stock?sslmode=verify-full&sslrootcert=/app/rds-global-bundle.pem"
    ```
 
-4. Express Mode のサービスを作る。タスク実行ロールと、Express Mode が使うインフラストラクチャロールを先に用意し、タスク実行ロールには手順3のシークレットを読む権限を足しておく。RDS と同じ VPC のサブネットと、アプリのタスク用のセキュリティグループを指定する。
+   Codex を使うときは、OpenAI の API キーも入れる。ChatGPT のログインで使うときは、代わりに `~/.codex/auth.json` の中身を入れ、手順4で `CODEX_AUTH_JSON` として渡す。
+
+   ```bash
+   aws secretsmanager create-secret --name stock-analyzer/openai-api-key --secret-string "sk-..."
+   ```
+
+4. Express Mode のサービスを作る。タスク実行ロールと、Express Mode が使うインフラストラクチャロールを先に用意し、タスク実行ロールには手順3のシークレット(DB の接続先と OpenAI の API キー)を読む権限を足しておく。RDS と同じ VPC のサブネットと、アプリのタスク用のセキュリティグループを指定する。
 
    ```bash
    aws ecs create-express-gateway-service \
@@ -244,7 +293,10 @@ Docker イメージには AWS が公開している RDS の CA 証明書の束�
      --primary-container '{
        "image": "<アカウント ID>.dkr.ecr.ap-northeast-1.amazonaws.com/stock-analyzer:latest",
        "containerPort": 3000,
-       "secrets": [{ "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:<アカウント ID>:secret:stock-analyzer/database-url" }]
+       "secrets": [
+         { "name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:<アカウント ID>:secret:stock-analyzer/database-url" },
+         { "name": "OPENAI_API_KEY", "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:<アカウント ID>:secret:stock-analyzer/openai-api-key" }
+       ]
      }' \
      --network-configuration '{ "subnets": ["<サブネット ID>"], "securityGroups": ["<アプリのタスク用のセキュリティグループ>"] }' \
      --health-check-path "/login" \

@@ -1,6 +1,7 @@
 // API(/api/*)が返す JSON の型。サーバーの型を使えるものは import type で借り、画面にしかない形はここで定義する。
 // import type はビルド時に消えるので、サーバーのコードがブラウザの bundle に入ることはない
-import type { CodexModel, RankItem } from "../server/ai/codex";
+import type { CodexModel } from "../server/ai/codex";
+import type { RankItem } from "../server/ai/ranking";
 import type { DecisionResult } from "../server/ai/decisions";
 import type { EarningsInfo, NewsItem } from "../server/materials";
 import type { Listing } from "../server/prime";
@@ -46,7 +47,8 @@ export type JudgeResult = {
   scale?: string;
 };
 
-export type RankingInfo = { model: string; summary: string; ranked: number; error: string | null };
+// provider はランク付けに使った AI の表示名。Codex だけを使っていた頃に保存した結果にはない
+export type RankingInfo = { provider?: string; model: string; summary: string; ranked: number; error: string | null };
 
 export type JudgeResponse = {
   disclaimer: string;
@@ -84,6 +86,8 @@ export type Health = {
   decisions: { provider: Settings["decisionsProvider"]; label: string; available: boolean };
   codex: boolean;
   codexModel: string;
+  // ランク付けに使う AI。どちらも使えなければ null
+  ranking: { provider: "codex" | "workers-ai"; label: string; model: string } | null;
 };
 
 export type SettingsPayload = {

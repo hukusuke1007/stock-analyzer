@@ -10,6 +10,9 @@ import { IndicatorMenu } from "./IndicatorMenu";
 import { MaterialsToggle } from "./MaterialsToggle";
 import { SearchBox } from "./SearchBox";
 
+// 上部バーに出す、判定の AI の短い名前
+const PROVIDER_SHORT: Record<string, string> = { codex: "Codex", jev: "Jev", "workers-ai": "Workers AI" };
+
 const VIEWS = [
   { path: "/", label: "チャート" },
   { path: "/watchlist", label: "関心銘柄" },
@@ -130,16 +133,17 @@ function AiStatus() {
   }
 
   const d = h.decisions;
+  const r = h.ranking;
   const title = [
     `判定(Decisions): ${d.label}${d.provider === "codex" ? ` ${h.codexModel}` : ""}${d.available ? "" : " — 使えないので数値条件だけで判定"}`,
-    `ランク付け: Codex ${h.codexModel}${h.codex ? "" : " — 使えないので判定順に並べる"}`,
+    r ? `ランク付け: ${r.label} ${r.model}` : "ランク付け: Codex も Workers AI も使えないので判定順に並べる",
     "クリックで設定を開く",
   ].join("\n");
 
   return (
-    <button className={`status ${d.available && h.codex ? "on" : "off"}`} type="button" title={title} onClick={() => setSettingsOpen(true)}>
-      判定: {d.provider === "jev" ? "Jev" : "Codex"}
-      {d.available ? "" : "(未接続)"} / ランク: Codex{h.codex ? "" : "(未接続)"}
+    <button className={`status ${d.available && r ? "on" : "off"}`} type="button" title={title} onClick={() => setSettingsOpen(true)}>
+      判定: {PROVIDER_SHORT[d.provider]}
+      {d.available ? "" : "(未接続)"} / ランク: {r ? r.label : "(未接続)"}
     </button>
   );
 }

@@ -44,7 +44,7 @@ const ROW_VALUE: Record<SortKey, (r: JudgeResult) => string | number | null | un
 const TEXT_KEYS: SortKey[] = ["code", "name", "sector", "scale"];
 
 const COLUMNS: { key: SortKey | null; label: string; className?: string; title?: string }[] = [
-  { key: "rank", label: "順位", className: "num", title: "Codex App Server のランキング(上位30件)" },
+  { key: "rank", label: "順位", className: "num", title: "AI(Codex か Workers AI)のランキング(上位30件、Workers AI は15件)" },
   { key: "code", label: "コード" },
   { key: "name", label: "銘柄" },
   { key: "sector", label: "業種" },
@@ -389,11 +389,11 @@ function ScreenSummary({ screen, strategyLabel, error }: { screen: ScreenResult 
       {screen.ranking?.error ? (
         <>
           {" · "}
-          <span className="error">Codex のランク付けに失敗: {screen.ranking.error}</span>
+          <span className="error">{screen.ranking.provider ?? "Codex"} のランク付けに失敗: {screen.ranking.error}</span>
         </>
       ) : screen.ranking ? (
         <div className="rank-summary">
-          Codex({screen.ranking.model})上位{screen.ranking.ranked}件をランク付け: {screen.ranking.summary}
+          {screen.ranking.provider ?? "Codex"}({screen.ranking.model})上位{screen.ranking.ranked}件をランク付け: {screen.ranking.summary}
         </div>
       ) : null}
     </div>

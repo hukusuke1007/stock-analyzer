@@ -7,17 +7,14 @@ import type { JsonValue } from "../strategies/index.js";
 // Codex App Server(`codex app-server`、stdio の JSON-RPC)のクライアント。
 // 認証は Codex CLI のログイン(ChatGPT アカウント)をそのまま使うので API キーは要らない。
 // プロセスは1つだけ立ち上げて使い回し、問い合わせごとに使い捨てのスレッド(ephemeral)で1ターンだけ回す。
-// 銘柄ごとの判定(ai/decisions-codex.ts)と、判定済みの銘柄のランク付け(rankStocks)に使う。
+// 銘柄ごとの判定(ai/decisions-batch.ts)と、判定済みの銘柄のランク付け(ai/ranking.ts)に使う。
 // プロトコル: https://developers.openai.com/codex/app-server
 
 const BIN = process.env.CODEX_BIN ?? "codex";
 // 判定(Decisions)とランク付けの両方で使うモデルは、設定(settings.ts の codexModel)で決める
 export const codexModel = () => getSettings().codexModel;
-const RANK_EFFORT = process.env.RANK_EFFORT ?? "medium";
 const TURN_TIMEOUT_MS = 5 * 60_000;
 
-export type RankItem = { code: string; rank: number; score: number; reason: string };
-export type Ranking = { model: string; summary: string; items: RankItem[] };
 
 type TurnCompleted = {
   threadId: string;
@@ -75,7 +72,7 @@ class AppServer {
     } else if (msg.method === "error") {
       const p = msg.params as { threadId?: string; error?: { message?: string }; willRetry?: boolean };
       if (p.willRetry || !p.threadId) return;
-      this.turns.get(p.threadId)?.reject(new Error(p.error?.message ?? "Codex のエラー"));
+      this.turns.get(p.threadId)?.reject(new Error(redactApiKey(p.error?.message ?? "Codex のエラー")));
       this.turns.delete(p.threadId);
     }
   }
@@ -127,7 +124,7 @@ class AppServer {
         outputSchema: opts.schema,
       });
       const { turn } = await completed;
-      if (turn.status !== "completed") throw new Error(`Codex のターンが ${turn.status}: ${turn.error?.message ?? ""}`);
+      if (turn.status !== "completed") throw new Error(`Codex のターンが ${turn.status}: ${redactApiKey(turn.error?.message ?? "")}`);
       const text = turn.items.filter((i) => i.type === "agentMessage").at(-1)?.text;
       if (!text) throw new Error("Codex の応答に最終メッセージがない");
       return { model: started.model, output: JSON.parse(text) as T };
@@ -135,6 +132,14 @@ class AppServer {
       clearTimeout(timer);
     }
   }
+}
+
+/**
+ * エラー文に入る API キー(OpenAI は一部を伏せて sk-abcd*****wxyz の形で返す)を、すべて伏せる。
+ * エラー文は判定結果の懸念点として保存され、ほかのユーザーも見る画面に出るため。
+ */
+function redactApiKey(message: string): string {
+  return message.replace(/sk-[A-Za-z0-9_*-]+/g, "sk-***");
 }
 
 export type TurnOptions = { instructions: string; prompt: string; schema: JsonValue; model: string; effort: string };
@@ -169,7 +174,8 @@ export function listCodexModels(): Promise<CodexModel[]> {
   return modelsCache;
 }
 
-// 起動時に一度だけ、App Server が立ち上がって初期化できるかを確かめる
+// 起動時に一度だけ、App Server が立ち上がって初期化でき、ログインしているかを確かめる。
+// ログインしていなくても App Server は起動するので、ログインまで見ないと、判定のたびに認証のエラーで失敗する
 let available: Promise<boolean> | undefined;
 export function codexAvailable(): Promise<boolean> {
   available ??= (async () => {
@@ -181,6 +187,14 @@ export function codexAvailable(): Promise<boolean> {
         s.ready,
         new Promise((_, reject) => (timer = setTimeout(() => reject(new Error("20秒で初期化できない")), 20_000))),
       ]);
+
+      // account は ChatGPT のログインなら { type: "chatgpt" }、API キーなら { type: "apiKey" }、未ログインなら null
+      const { account } = await s.request<{ account: { type: string } | null }>("account/read", {});
+      if (!account) {
+        console.error("Codex にログインしていない。手元では codex login、コンテナでは OPENAI_API_KEY か CODEX_AUTH_JSON を設定する");
+        return false;
+      }
+
       return true;
     } catch (e) {
       console.error(`Codex App Server を使えない: ${e instanceof Error ? e.message : e}`);
@@ -190,63 +204,4 @@ export function codexAvailable(): Promise<boolean> {
     }
   })();
   return available;
-}
-
-const RANK_INSTRUCTIONS = [
-  "あなたは日本株のスイングトレードの判断材料を整理するアナリスト。",
-  "渡された銘柄はすべて、売買ルールの数値条件と Decisions(または数値条件だけ)で判定済み。",
-  "ルールに照らして、今日買うならどれが有望かを1位から順に並べる。",
-  "重視する順: ルールの条件の充足度 > 判定(買い > 打診買い > 見送り)と判定の確率 > 悪材料・決算の近さなどのリスク > 損切り幅に対する利確幅(riskReward)。",
-  "渡したデータだけで判断し、ツールやコマンドは使わない。reason は日本語で、根拠になった数値を入れて80字以内。",
-].join("\n");
-
-// 判定済みの銘柄をランク付けする。stocks の code が全部そろって返るように補う
-export async function rankStocks(strategyRules: string, stocks: { code: string; [key: string]: JsonValue }[]): Promise<Ranking> {
-  const schema = {
-    type: "object",
-    properties: {
-      summary: { type: "string" },
-      ranking: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            code: { type: "string", enum: stocks.map((s) => s.code) },
-            score: { type: "number", minimum: 0, maximum: 100 },
-            reason: { type: "string" },
-          },
-          required: ["code", "score", "reason"],
-          additionalProperties: false,
-        },
-      },
-    },
-    required: ["summary", "ranking"],
-    additionalProperties: false,
-  };
-  const prompt = [
-    "# 売買ルール",
-    strategyRules,
-    "",
-    `# 判定済みの銘柄(${stocks.length}件)`,
-    JSON.stringify(stocks),
-    "",
-    "全銘柄を有望な順に ranking に並べ、score(0〜100、高いほど有望)と reason を付ける。summary には上位の傾向を2〜3文で書く。",
-  ].join("\n");
-
-  const { model, output } = await runTurn<{ summary: string; ranking: { code: string; score: number; reason: string }[] }>({
-    instructions: RANK_INSTRUCTIONS,
-    prompt,
-    schema,
-    model: codexModel(),
-    effort: RANK_EFFORT,
-  });
-  // 重複を除き、抜けた銘柄は最後に回す
-  const seen = new Set<string>();
-  const ordered = output.ranking.filter((r) => !seen.has(r.code) && seen.add(r.code));
-  const missing = stocks.filter((s) => !seen.has(s.code)).map((s) => ({ code: s.code, score: 0, reason: "Codex のランキングに含まれなかった" }));
-  return {
-    model,
-    summary: output.summary,
-    items: [...ordered, ...missing].map((r, i) => ({ ...r, rank: i + 1 })),
-  };
 }

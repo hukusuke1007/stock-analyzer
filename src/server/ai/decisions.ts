@@ -1,6 +1,7 @@
 import type { Analysis, JsonValue, Strategy, Verdict } from "../strategies/index.js";
 import { getSettings, PROVIDERS, type Provider } from "../settings.js";
 import { codexAvailable } from "./codex.js";
+import { workersAiAvailable } from "./workers-ai.js";
 
 export { PROVIDERS, type Provider };
 
@@ -10,7 +11,8 @@ export { PROVIDERS, type Provider };
 // - verdict: 総合判断(買い / 打診買い / 見送り)
 //
 // 聞く先は UI の設定ダイアログで切り替える(settings.ts の decisionsProvider)。
-// - codex(既定): Codex App Server 経由。モデルは設定の codexModel(既定 gpt-6-luna)。Codex CLI のログインで動く(decisions-codex.ts)
+// - codex(Node の既定): Codex App Server 経由。モデルは設定の codexModel(既定 gpt-6-luna)。Codex CLI のログインで動く(decisions-batch.ts)
+// - workers-ai(Cloudflare Workers の既定): Cloudflare Workers AI。Workers の AI のバインディングで動く(decisions-batch.ts)
 // - jev: TypeSafe AI の Jev(Decision API)。TYPESAFE_API_KEY が要る(decisions-jev.ts)
 
 export type DecisionResult = {
@@ -47,12 +49,20 @@ export function jevAvailable(): boolean {
 }
 
 export async function decisionsAvailable(): Promise<boolean> {
-  return decisionsProvider() === "jev" ? jevAvailable() : codexAvailable();
+  const provider = decisionsProvider();
+  if (provider === "jev") {
+    return jevAvailable();
+  }
+
+  return provider === "workers-ai" ? workersAiAvailable() : codexAvailable();
 }
 
-// 同時に投げると無駄なく詰められる件数。Codex はまとめて聞くので多め、Jev は1件ずつなので少なめ
+// 同時に投げると無駄なく詰められる件数。Codex はまとめて(20件ずつ)聞くので多め、
+// Workers AI は5件ずつまとめるので中くらい、Jev は1件ずつなので少なめ
+const CAPACITY: Record<Provider, number> = { codex: 120, "workers-ai": 30, jev: 8 };
+
 export function decisionCapacity(): number {
-  return decisionsProvider() === "jev" ? 8 : 120;
+  return CAPACITY[decisionsProvider()];
 }
 
 // 確率を合計1に揃える(モデルの出す値はずれることがある)
@@ -81,6 +91,10 @@ export async function askDecision(
     hasNews: news !== undefined,
   };
   // 使わない方の SDK は読み込まない
-  if (decisionsProvider() === "jev") return (await import("./decisions-jev.js")).askJev(input);
-  return (await import("./decisions-codex.js")).askCodex(input);
+  const provider = decisionsProvider();
+  if (provider === "jev") {
+    return (await import("./decisions-jev.js")).askJev(input);
+  }
+
+  return (await import("./decisions-batch.js")).askBatchedDecision(input, provider);
 }

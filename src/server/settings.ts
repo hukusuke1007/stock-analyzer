@@ -1,20 +1,34 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import pkg from "../../package.json";
+import { workersAiAvailable } from "./ai/workers-ai";
 import { getRepository } from "./db/repository";
 
 // アプリの設定。UI の設定ダイアログから変え、ユーザーごとに DB(user_settings)に保存する。
 // 判定(Decisions)は decisionsProvider、Codex で使うモデル(判定とランク付け)は codexModel で決まる。
 // notifyTakeProfit / notifyStopLoss は、シミュレーターの保有株がラインに届いたときのブラウザ通知(画面側で出す)。
 
-export type Provider = "codex" | "jev";
+export type Provider = "codex" | "jev" | "workers-ai";
 export type Settings = { decisionsProvider: Provider; codexModel: string; notifyTakeProfit: boolean; notifyStopLoss: boolean };
 
 export const PROVIDERS: Record<Provider, string> = {
   codex: "Codex(Codex App Server)",
   jev: "Jev(TypeSafe AI)",
+  "workers-ai": "Workers AI(Cloudflare)",
 };
 
-const DEFAULTS: Settings = { decisionsProvider: "codex", codexModel: "gpt-6-luna", notifyTakeProfit: false, notifyStopLoss: false };
+const PROVIDER_IDS = Object.keys(PROVIDERS) as Provider[];
+
+/**
+ * まだ設定を保存していないユーザーの設定。判定の AI は、Codex を起動できない Cloudflare Workers では Workers AI にする。
+ */
+function defaultSettings(): Settings {
+  return {
+    decisionsProvider: workersAiAvailable() ? "workers-ai" : "codex",
+    codexModel: "gpt-6-luna",
+    notifyTakeProfit: false,
+    notifyStopLoss: false,
+  };
+}
 
 // 設定ダイアログに出すアプリの情報
 export const APP_INFO = {
@@ -35,7 +49,7 @@ const requestContext = new AsyncLocalStorage<{ userId: string; settings: Setting
  * 複数のサーバー(インスタンス)で設定が食い違わないよう、メモリに持たずリクエストのたびに読む。
  */
 export async function loadSettings(userId: string): Promise<Settings> {
-  return (await getRepository().loadSettings(userId)) ?? { ...DEFAULTS };
+  return (await getRepository().loadSettings(userId)) ?? defaultSettings();
 }
 
 /**
@@ -50,7 +64,7 @@ export function runWithSettings<T>(userId: string, settings: Settings, fn: () =>
  * 今のリクエストの設定を返す。リクエストの外(起動時など)では既定値。
  */
 export function getSettings(): Settings {
-  return requestContext.getStore()?.settings ?? DEFAULTS;
+  return requestContext.getStore()?.settings ?? defaultSettings();
 }
 
 /**
@@ -70,10 +84,10 @@ export async function updateSettings(userId: string, body: unknown, models: stri
   const next = await loadSettings(userId);
 
   if (b.decisionsProvider !== undefined) {
-    if (b.decisionsProvider !== "codex" && b.decisionsProvider !== "jev") {
-      throw new SettingsError("decisionsProvider は codex / jev のいずれかを指定してください");
+    if (!PROVIDER_IDS.includes(b.decisionsProvider as Provider)) {
+      throw new SettingsError(`decisionsProvider は ${PROVIDER_IDS.join(" / ")} のいずれかを指定してください`);
     }
-    next.decisionsProvider = b.decisionsProvider;
+    next.decisionsProvider = b.decisionsProvider as Provider;
   }
   if (b.codexModel !== undefined) {
     // Codex のモデル一覧が取れたときだけ照合する(取れないときは Codex 自体を使えない)

@@ -8,6 +8,8 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": { "enabled": true },
   // DB は D1。シークレットの DATABASE_URL を設定したときは、D1 の代わりに Turso に繋ぐ(src/server/db/connection.cloudflare.ts)
+  // Workers AI。Codex を起動できない Workers で、判定とランク付けに使う(src/server/ai/workers-ai.ts)
+  "ai": { "binding": "AI" },
   "d1_databases": [
     {
       "binding": "DB",

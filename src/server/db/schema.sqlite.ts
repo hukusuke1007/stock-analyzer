@@ -34,7 +34,7 @@ export const sessions = sqliteTable(
 // アプリの設定(判定の AI・Codex のモデル・通知)。行がなければ既定値を使う
 export const userSettings = sqliteTable("user_settings", {
   userId: userId().primaryKey(),
-  decisionsProvider: text("decisions_provider", { enum: ["codex", "jev"] }).notNull(),
+  decisionsProvider: text("decisions_provider", { enum: ["codex", "jev", "workers-ai"] }).notNull(),
   codexModel: text("codex_model").notNull(),
   // シミュレーターの保有株が利確 / 損切りラインに届いたときのブラウザ通知
   notifyTakeProfit: integer("notify_take_profit", { mode: "boolean" }).notNull().default(false),

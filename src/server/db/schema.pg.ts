@@ -32,7 +32,7 @@ export const sessions = pgTable(
 
 export const userSettings = pgTable("user_settings", {
   userId: userId().primaryKey(),
-  decisionsProvider: text("decisions_provider", { enum: ["codex", "jev"] }).notNull(),
+  decisionsProvider: text("decisions_provider", { enum: ["codex", "jev", "workers-ai"] }).notNull(),
   codexModel: text("codex_model").notNull(),
   notifyTakeProfit: boolean("notify_take_profit").notNull().default(false),
   notifyStopLoss: boolean("notify_stop_loss").notNull().default(false),

@@ -4,6 +4,8 @@ declare module "cloudflare:workers" {
   export const env: {
     // wrangler.jsonc の d1_databases のバインディング
     DB?: unknown;
+    // wrangler.jsonc の ai のバインディング(Workers AI)
+    AI?: unknown;
     // Turso に繋ぐときのシークレット
     DATABASE_URL?: string;
     DATABASE_AUTH_TOKEN?: string;

@@ -14,8 +14,11 @@
     "resolveJsonModule": true,
     "types": ["node", "vite/client"],
     "noEmit": true,
-    // DB の接続はビルドの種類で差し替える(vite.config.ts の resolve.alias)。型検査は Node 版で行う
-    "paths": { "#db-connection": ["./src/server/db/connection.node.ts"] }
+    // DB の接続と Workers AI のバインディングはビルドの種類で差し替える(vite.config.ts の resolve.alias)。型検査は Node 版で行う
+    "paths": {
+      "#db-connection": ["./src/server/db/connection.node.ts"],
+      "#workers-ai-binding": ["./src/server/ai/workers-ai-binding.node.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts", "vite.config.ts", "drizzle.config.ts", "drizzle.pg.config.ts"]
 }
