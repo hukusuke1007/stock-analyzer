@@ -36,6 +36,7 @@ DB の読み書きを変えたら、`src/server/db/repository.sqlite.ts` と `re
 - `src/server/strategies/` — 売買ルール。増やすときは `Strategy` 型のオブジェクトを作り、`index.ts` の `STRATEGIES` に登録する
 - `src/server/technicals.ts` — 日足の取得とテクニカル指標。画面のインジケーター(`src/lib/indicators.ts`)も同じ式で計算しているので、式を変えたら両方を直す
 - `src/routes/`・`src/components/`・`src/lib/` — 画面(React + TanStack Router / Query / Store、lightweight-charts)
+- `price_drivers/` — 東証プライムの企業ごとの株価変動要因レポート(`証券コード_企業名/日付_xxxx.md`)。アプリのコードではない。書き方は同ディレクトリの `AGENTS.md`
 
 ## 書き方
 
