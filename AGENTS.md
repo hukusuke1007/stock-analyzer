@@ -24,6 +24,7 @@ AI エージェント(Codex / Claude Code など)がこのリポジトリで作�
 
 変更したら `pnpm typecheck`・`pnpm build`・`pnpm build:cloudflare` を必ず通す(CI と同じ)。
 API の動きを変えたら `pnpm dev` で起動し、`curl` で `/api/auth/login` してから、Cookie を付けて `/api/health`・`/api/judge` を叩いて確かめる。
+`terraform/` を変えたら、変えたディレクトリで `terraform fmt` と `terraform validate` を通す(`terraform init -backend=false` で初期化できる)。
 DB のスキーマを変えるときは、`src/server/db/schema.sqlite.ts` と `schema.pg.ts` の両方を同じように直し、`pnpm db:generate` で `drizzle/` と `drizzle-pg/` のマイグレーションを作ってコミットする。
 DB の読み書きを変えたら、`src/server/db/repository.sqlite.ts` と `repository.pg.ts` の両方を直し、sqld と PostgreSQL(`docker compose --profile postgres up -d postgres`)の両方で確かめる。
 
@@ -36,6 +37,7 @@ DB の読み書きを変えたら、`src/server/db/repository.sqlite.ts` と `re
 - `src/server/strategies/` — 売買ルール。増やすときは `Strategy` 型のオブジェクトを作り、`index.ts` の `STRATEGIES` に登録する
 - `src/server/technicals.ts` — 日足の取得とテクニカル指標。画面のインジケーター(`src/lib/indicators.ts`)も同じ式で計算しているので、式を変えたら両方を直す
 - `src/routes/`・`src/components/`・`src/lib/` — 画面(React + TanStack Router / Query / Store、lightweight-charts)
+- `terraform/` — Cloudflare・GCP・AWS に置くための Terraform(置き場所ごとのディレクトリ)。使い方は HOW_TO_DEPLOY.md の「Terraform で作る場合」
 - `price_drivers/` — 東証プライムの企業ごとの株価変動要因レポート(`証券コード_企業名/日付_xxxx.md`)。アプリのコードではない。書き方は同ディレクトリの `AGENTS.md`
 
 ## 書き方

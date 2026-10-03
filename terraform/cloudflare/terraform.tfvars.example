@@ -1,0 +1,10 @@
+# terraform.tfvars にコピーして値を入れる(terraform.tfvars はコミットしない)
+account_id = "Cloudflare のアカウント ID"
+
+# 独自ドメインを使うとき(wrangler deploy のあと)
+# custom_domain = "stock.example.com"
+# zone_id       = "example.com のゾーン ID"
+
+# 自分だけで使うとき
+# access_domain         = "stock.example.com"
+# access_allowed_emails = ["you@example.com"]
