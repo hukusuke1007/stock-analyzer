@@ -1,6 +1,9 @@
 # 依存・ビルド結果
 node_modules/
-ui/dist/
+.output/
+dist/
+.wrangler/
+.tanstack/
 *.tsbuildinfo
 
 # 判定結果・関心銘柄・シミュレーターの口座(個人のデータ)
@@ -10,6 +13,7 @@ data/
 .env
 .env.*
 !.env.example
+.dev.vars
 
 # OS・エディタ・ツール
 .DS_Store

@@ -126,7 +126,7 @@ Decisions は、AI に1銘柄ずつ選択肢の決まった問いに答えさせ
 | 見送り   | 条件が揃わない、下げ止まっていない、または悪材料がある。入らないのが正解      |
 
 - AI には直近10営業日の終値を渡し、「下落が止まり反転しつつあるか」を聞く。ルールの要約として「4つ全部揃うことは稀。迷ったら入らない」も渡す
-- 大型株の逆張り手法（ちょる子式）をベースに実装している。指標の計算式は `src/technicals.ts`
+- 大型株の逆張り手法（ちょる子式）をベースに実装している。指標の計算式は `src/server/technicals.ts`
 - 実行例（2026-09-18 終値、Jev で判定していた時点）: 候補254件で、満たした条件は最多2つ。「買い」「打診買い」は0件
 
 ### 最終判定のガード（両ルール共通）
@@ -185,14 +185,14 @@ Decisions を使えなければ数値条件だけで判定し（「最終判定�
 
 ### Decisions（銘柄ごとの判定）
 
-Decisions の送り先は、設定ダイアログで選んだ AI で決まる（設定は `data/settings.json` に保存する）。
+Decisions の送り先は、設定ダイアログで選んだ AI で決まる（設定はユーザーごとに DB の `user_settings` に保存する）。
 
 | 判定の AI       | 送り先                                                                           | 送り方                                                                                    |
 | --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `codex`（既定） | Codex App Server。モデルは設定の Codex のモデル（既定 `gpt-6-luna`、推論 `low`） | 20件ずつ1ターンにまとめ、同時に6ターンまで回す（`src/ai/decisions-codex.ts`）             |
-| `jev`           | TypeSafe AI の Jev（判定専用の API。`systemOne`）                                | 1銘柄ずつ1リクエスト、同時8件まで（`src/ai/decisions-jev.ts`）。`TYPESAFE_API_KEY` が要る |
+| `codex`（既定） | Codex App Server。モデルは設定の Codex のモデル（既定 `gpt-6-luna`、推論 `low`） | 20件ずつ1ターンにまとめ、同時に6ターンまで回す（`src/server/ai/decisions-codex.ts`）             |
+| `jev`           | TypeSafe AI の Jev（判定専用の API。`systemOne`）                                | 1銘柄ずつ1リクエスト、同時8件まで（`src/server/ai/decisions-jev.ts`）。`TYPESAFE_API_KEY` が要る |
 
-どちらに送っても、渡すもの（ルールの要約・指標・条件の判定結果・ニュース・決算）と返ってくる形は同じで、`src/ai/decisions.ts` が振り分ける。
+どちらに送っても、渡すもの（ルールの要約・指標・条件の判定結果・ニュース・決算）と返ってくる形は同じで、`src/server/ai/decisions.ts` が振り分ける。
 既定を Codex にしているのは、API キーなしで動かせるからである。
 
 Codex で1ターンに1銘柄ずつ聞くと、スキャンの候補が数百件あるので時間がかかる。
@@ -220,44 +220,103 @@ Codex で1ターンに1銘柄ずつ聞くと、スキャンの候補が数百件
 
 ## コードの構成
 
+TanStack Start の Web アプリで、画面(React)と API を1つのサーバーが配信する。
+API は Hono のアプリのまま `src/server/api.ts` に置き、TanStack Start のサーバールート(`src/routes/api/$.ts`)から渡す。
+エンドポイントの処理を TanStack Start の書き方に書き直さずに、Node と Cloudflare Workers の両方で動かせるからである。
+
 ```text
 docs/
-├── sequence.md          # /screen と /judge のシーケンス図
+├── sequence.md          # /api/screen と /api/judge のシーケンス図
 └── images/              # README の画面のスクリーンショット
+drizzle/                 # マイグレーション(pnpm db:generate で作る)
+scripts/
+├── migrate.mjs          # マイグレーションの適用(Docker のコンテナの起動時にも使う)
+└── import-json.ts       # 旧版の data/*.json をユーザーの DB に取り込む
 src/
-├── server.ts            # Hono の API サーバー。判定の組み立て、SSE、並び替え、ランク付けの呼び出し
-├── settings.ts          # アプリの設定(判定の AI・Codex のモデル)とアプリの情報
-├── ai/
-│   ├── decisions.ts       # Decisions(銘柄ごとの判定)の共通部分と、設定での振り分け
-│   ├── decisions-codex.ts # Codex App Server にまとめて聞く
-│   ├── decisions-jev.ts   # TypeSafe AI の Jev に1件ずつ聞く
-│   └── codex.ts           # Codex App Server(JSON-RPC over stdio)のクライアントとランク付け
-├── prime.ts             # JPX の上場銘柄一覧からプライム銘柄を取る(SheetJS)
-├── materials.ts         # 決算発表日(JPX / Yahoo)とニュース(Google ニュース)の取得
-├── storage.ts           # 判定結果・設定などの保存と読み込み(data/)
-├── simulator.ts         # 株シミュレーター(仮想売買の約定・損益の計算)
-├── technicals.ts        # 日足の取得(Yahoo Finance)とテクニカル指標の計算
-└── strategies/
-    ├── index.ts         # 売買ルールの型と一覧(STRATEGIES)
-    ├── rebound.ts       # 急落リバウンド
-    └── swing.ts         # スイング
-ui/                      # ブラウザ UI(Vite のルート。ビルド結果は ui/dist)
-├── index.html
-└── src/
-    ├── main.js          # チャート・ウォッチリスト・判定の詳細・スクリーナー・リアルタイム更新
-    ├── grid.js          # 関心銘柄タブ(チャートの行列表示・並べ替え)
-    ├── sim.js           # シミュレーター タブ(仮想売買)と、チャート・スクリーナーから開く売買ダイアログ
-    ├── settings.js      # 設定ダイアログ(判定の AI・Codex のモデル・アプリの情報)
-    ├── ichimoku.js      # 一目均衡表の計算と雲の描画
-    └── style.css        # TradingView 風のダークテーマとスマホ幅のレイアウト
-vite.config.ts           # 開発時に API へプロキシする設定
+├── router.tsx           # ルーターと TanStack Query のクライアント
+├── start.ts             # 画面はブラウザで描画する(SSR しない)
+├── routes/              # 画面と API のルート(ファイル名がパスになる)
+│   ├── __root.tsx       # HTML の枠
+│   ├── login.tsx / signup.tsx
+│   ├── _app.tsx         # ログインが要る画面の枠(上部バー・ダイアログ・ライブ更新・通知)
+│   ├── _app/index.tsx   # チャート画面(?code=7203)
+│   ├── _app/watchlist.tsx
+│   ├── _app/sim.tsx
+│   └── api/$.ts         # /api/* を Hono の API に渡す
+├── components/          # 画面の部品(chart / grid / sim / layout / auth / common)
+├── lib/
+│   ├── queries.ts       # API のクエリ(TanStack Query)と、判定・関心銘柄の更新
+│   ├── ui-store.ts      # 表示設定・下書き・判定中の印(TanStack Store。表示設定は localStorage に残す)
+│   ├── indicators.ts    # チャートのインジケーターの計算(一目均衡表を含む)
+│   ├── chart-theme.ts   # チャートの色・インジケーターの定義・データ表示の行
+│   ├── live.ts          # 取引時間中のライブ更新
+│   └── notifications.ts # 利確 / 損切りラインのブラウザ通知
+├── styles/app.css       # TradingView 風のダークテーマ(背景は黒)とスマホ幅のレイアウト
+└── server/
+    ├── api.ts           # Hono の API。判定の組み立て、SSE、並び替え、ランク付けの呼び出し
+    ├── auth.ts          # アカウント作成・ログイン・ログアウト・退会と、ログインが要る API の確認
+    ├── db/
+    │   ├── repository.ts         # DB の読み書きの窓口(Repository の型と取得)
+    │   ├── repository.sqlite.ts  # SQLite 版の実装(sqld・Turso・D1。まとめて書くところは batch)
+    │   ├── repository.pg.ts      # PostgreSQL 版の実装(Cloud SQL・RDS。まとめて書くところはトランザクション)
+    │   ├── schema.sqlite.ts      # SQLite 版の Drizzle のスキーマ(マイグレーションは drizzle/)
+    │   ├── schema.pg.ts          # PostgreSQL 版の Drizzle のスキーマ(マイグレーションは drizzle-pg/)
+    │   ├── connection.node.ts    # Node での接続先の選択(DATABASE_URL が postgres:// なら PostgreSQL、それ以外は libSQL)
+    │   └── connection.cloudflare.ts # Workers での接続先の選択(DATABASE_URL があれば Turso、なければ D1)
+    ├── settings.ts      # ユーザーごとの設定(判定の AI・Codex のモデル・通知)とアプリの情報
+    ├── storage.ts       # 判定結果・スクリーニング結果・関心銘柄の保存と読み込み
+    ├── simulator.ts     # 株シミュレーター(仮想売買の約定・損益の計算。同時の注文は口座の revision で検出してやり直す)
+    ├── ai/
+    │   ├── decisions.ts       # Decisions(銘柄ごとの判定)の共通部分と、設定での振り分け
+    │   ├── decisions-codex.ts # Codex App Server にまとめて聞く
+    │   ├── decisions-jev.ts   # TypeSafe AI の Jev に1件ずつ聞く
+    │   └── codex.ts           # Codex App Server(JSON-RPC over stdio)のクライアントとランク付け
+    ├── prime.ts         # JPX の上場銘柄一覧からプライム銘柄を取る(SheetJS)
+    ├── materials.ts     # 決算発表日(JPX / Yahoo)とニュース(Google ニュース)の取得
+    ├── technicals.ts    # 日足の取得(Yahoo Finance)とテクニカル指標の計算
+    └── strategies/
+        ├── index.ts     # 売買ルールの型と一覧(STRATEGIES)
+        ├── rebound.ts   # 急落リバウンド
+        └── swing.ts     # スイング
+compose.yaml             # ローカルの SQLite(sqld)・PostgreSQL と、本番と同じイメージのアプリ
+Dockerfile               # Node のサーバーのイメージ(Cloud Run・ECS など)
+wrangler.jsonc           # Cloudflare Workers と D1 の設定
+vite.config.ts           # ビルドの設定(DEPLOY_TARGET で Node / Cloudflare を切り替え、DB の接続も差し替える)
 ```
+
+### データの持ち方
+
+1つのデータベースを複数のユーザーで共有し、ユーザーのデータを持つテーブルはすべて `user_id` で分ける。
+データベースは置き場所に合わせて選ぶ(ローカルは SQLite の sqld、Cloudflare は D1、GCP は Cloud SQL、AWS は RDS。どこでも Turso を選べる。詳しくは [HOW_TO_DEPLOY.md](HOW_TO_DEPLOY.md))。
+SQLite 系と PostgreSQL では SQL の方言と、まとめて書き込む方法(SQLite 系は batch、PostgreSQL はトランザクション)が違う。
+そこで DB の読み書きを `Repository` という窓口にまとめ、方言ごとに2つ実装した。認証・設定・保存・シミュレーターは窓口だけを使い、どの DB かを意識しない。
+スキーマも方言ごとに2つ持ち、テーブル名と列名をそろえている。
+
+判定結果とスクリーニング結果は形が大きく、画面がそのまま読むだけなので JSON の列に入れる。
+ただし、スクリーニング結果は1回分を1行にまとめると数 MB になり、D1 の1行の上限(2MB)を超えるので、概要の行と銘柄ごとの行に分ける。
+
+シミュレーターの口座は、保有株と売買履歴を別のテーブルにする。
+D1 は BEGIN による対話的なトランザクションを使えないので、注文は「口座を読み、変更を計算し、読んだときの revision のままのときだけ書き込む」形で処理する。
+口座の revision は書き換えるたびに新しい値にし、別の注文が先に書き込んでいたら、読み直して計算し直す。
+そのため、注文を同時に受けても、別のサーバー(インスタンス)で受けても、現金と株数の計算が食い違わない。
+
+ユーザーごとの設定は、リクエストの始めに DB から読み、`AsyncLocalStorage` でそのリクエストの処理全体から読めるようにする。
+AI の呼び出しは深い所で設定(Codex のモデルなど)を読むので、引数で渡し回さずに済み、同時に来た別のユーザーのリクエストと設定が混ざらない。
+Codex にまとめて聞く判定(Decisions)は、問い合わせを受けた時点のモデルを銘柄ごとに持ち、同じモデルの銘柄どうしだけをまとめる。
+
+### 認証
+
+認証はメールアドレスとパスワードだけで行う。
+パスワードは Web Crypto の PBKDF2(SHA-256、10万回)でハッシュ化する。Cloudflare Workers の PBKDF2 の反復回数の上限が10万回なので、それに合わせている。
+ログイン状態は DB のセッションと HttpOnly・SameSite=Lax の Cookie で持ち、DB にはトークンそのものではなく SHA-256 のハッシュを保存する。
+`/api/strategies` と認証の API を除く API はログインが要る。判定結果や口座がユーザーごとに分かれているうえ、外部(Yahoo Finance・AI)へのリクエストも生むからである。
+退会すると、そのユーザーのデータをすべての表から消す。
 
 売買ルールを増やすときは、`strategies/` に `Strategy` 型のオブジェクトを作り、`index.ts` の `STRATEGIES` に登録する。
 `Strategy` には、条件と売り方（`sellPlan`）の計算（`analyze`）、AI に渡すルールの要約と判定の説明、Decisions に補わせる条件（`qualitative`）、`/screen` で AI に聞く銘柄の絞り込み（`isCandidate`）、Decisions を使えないときの判定（`fallbackVerdict`）を持たせる。
 ランク付けにはルールの要約（`rules`）がそのまま渡るので、ランク付けのための実装を足す必要はない。
 
-UI のチャート上のインジケーターはブラウザで計算している。式は `src/technicals.ts` と同じなので、片方を変えたらもう片方も直す。
+UI のチャート上のインジケーターはブラウザ(`src/lib/indicators.ts`)で計算している。式は `src/server/technicals.ts` と同じなので、片方を変えたらもう片方も直す。
 
 ## 注意点
 

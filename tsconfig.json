@@ -1,16 +1,21 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["node"],
-    "noEmit": true
+    "resolveJsonModule": true,
+    "types": ["node", "vite/client"],
+    "noEmit": true,
+    // DB の接続はビルドの種類で差し替える(vite.config.ts の resolve.alias)。型検査は Node 版で行う
+    "paths": { "#db-connection": ["./src/server/db/connection.node.ts"] }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts", "vite.config.ts", "drizzle.config.ts", "drizzle.pg.config.ts"]
 }

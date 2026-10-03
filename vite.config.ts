@@ -1,14 +1,27 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { nitro } from "nitro/vite";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
-// ブラウザ UI(ui/)。開発時は API(pnpm dev の :3000)へプロキシし、
-// ビルド結果(ui/dist)は API サーバーがそのまま配信する。
-const API = `http://localhost:${process.env.PORT ?? 3000}`;
+// TanStack Start のアプリ。画面と API(/api/*)を1つのサーバーで配信する。
+// ビルドの出力先は DEPLOY_TARGET で切り替える(HOW_TO_DEPLOY.md)。
+// - 既定: Nitro で Node のサーバー(.output/server/index.mjs)にする。Docker・Cloud Run・ECS 向け
+// - cloudflare: Cloudflare Workers 向け(wrangler.jsonc)。dev でも Workers の実行環境(workerd)で動く
+const target = process.env.DEPLOY_TARGET === "cloudflare" ? "cloudflare" : "node";
+
+// DB の接続はビルドの種類で差し替える。Workers では TCP の PostgreSQL のドライバーなどを bundle に入れず、D1 / Turso だけを扱う
+const dbConnection = fileURLToPath(new URL(`./src/server/db/connection.${target}.ts`, import.meta.url));
 
 export default defineConfig({
-  root: "ui",
-  build: { outDir: "dist", emptyOutDir: true },
-  server: {
-    port: 5173,
-    proxy: Object.fromEntries(["/health", "/strategies", "/bars", "/judge", "/screen", "/results", "/watchlist", "/search", "/sim", "/settings"].map((p) => [p, API])),
-  },
+  server: { port: Number(process.env.PORT ?? 3000) },
+  resolve: { alias: { "#db-connection": dbConnection } },
+  plugins: [
+    // Cloudflare のプラグインは、TanStack Start のサーバー側(ssr)の環境を Workers で動かすので先に置く
+    ...(target === "cloudflare" ? [cloudflare({ viteEnvironment: { name: "ssr" } })] : []),
+    tanstackStart(),
+    ...(target === "node" ? [nitro()] : []),
+    viteReact(),
+  ],
 });

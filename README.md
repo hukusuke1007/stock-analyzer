@@ -1,7 +1,8 @@
 # 株分析シミュレーター
 
-日本株を売買ルールに照らして「買い / 打診買い / 見送り」に判定し、有望な順に並べ、仮想売買で試せる株分析ツール（API サーバー + ブラウザ UI）。
+日本株を売買ルールに照らして「買い / 打診買い / 見送り」に判定し、有望な順に並べ、仮想売買で試せる株分析ツール（TanStack Start の Web アプリ）。
 リポジトリ名・パッケージ名は `stock-analyzer`。
+メールアドレスとパスワードでアカウントを作って使い、データはユーザーごとにデータベース（ローカルは SQLite。Cloudflare D1・Cloud SQL・RDS・Turso も選べる）に保存する。Cloudflare・GCP・AWS に置く手順は [HOW_TO_DEPLOY.md](HOW_TO_DEPLOY.md) にまとめている。
 
 > [!WARNING]
 > このツールの判定は投資助言ではありません。利用はすべて自己責任です。詳しくは[免責事項](#免責事項)を参照してください。
@@ -20,7 +21,9 @@
 | チャート            | TradingView 風の日足チャートと主なテクニカル指標。判定と利確 / 損切りラインを重ねて表示する |
 | 関心銘柄            | ウォッチリストの銘柄のチャートを並べて見る                                                  |
 | 株シミュレーター    | 元金を決めて仮想売買し、損益を確かめる（実際には発注しない）                                |
-| 設定                | 判定に使う AI（Codex / Jev）と Codex のモデルを画面で切り替える                             |
+| 設定                | 判定に使う AI（Codex / Jev）と Codex のモデル、利確 / 損切りの通知を画面で切り替える        |
+| 通知                | シミュレーターの保有株が利確 / 損切りラインに届いたら、ブラウザ通知で知らせる               |
+| アカウント          | メールアドレスとパスワードでアカウントを作り、ログイン・ログアウト・退会する                |
 
 AI に任せるのは、1銘柄ずつの判定（このツールでは Decisions と呼ぶ）と、複数銘柄のランク付けの2つである。
 既定では、どちらも Codex App Server 経由の GPT-6 Luna に聞くので、API キーは要らない。判定は TypeSafe AI の Jev にも切り替えられる。
@@ -32,8 +35,9 @@ AI に任せるのは、1銘柄ずつの判定（このツールでは Decisions
 
 | もの                    | バージョン | 用途                                                        |
 | ----------------------- | ---------- | ----------------------------------------------------------- |
-| Node.js                 | 24 以上    | API サーバーと UI                                           |
+| Node.js                 | 24 以上    | アプリ（画面と API）                                        |
 | pnpm                    | 12.8.1     | パッケージ管理（`package.json` の `packageManager` で固定） |
+| Docker（Compose）       | —          | SQLite（libSQL サーバー）を手元で動かす                     |
 | Codex CLI               | 0.160 以上 | 判定とランク付け。ChatGPT アカウントでログインしておく      |
 | TypeSafe AI の API キー | —          | 判定を Jev に切り替えるときだけ                             |
 
@@ -43,12 +47,16 @@ AI に任せるのは、1銘柄ずつの判定（このツールでは Decisions
 git clone <このリポジトリの URL> stock-analyzer
 cd stock-analyzer
 pnpm install
-codex login   # Codex CLI に ChatGPT アカウントでログイン(済みなら不要)
-pnpm dev      # API http://localhost:3000 と UI http://localhost:5173 を起動
+pnpm db:up        # SQLite(libSQL サーバー)を Docker Compose で起動(http://localhost:8080)
+pnpm db:migrate   # テーブルを作る(スキーマを変えたときも実行する)
+codex login       # Codex CLI に ChatGPT アカウントでログイン(済みなら不要)
+pnpm dev          # アプリを http://localhost:3000 で起動
 ```
 
-ブラウザで <http://localhost:5173> を開く。
+ブラウザで <http://localhost:3000> を開き、「アカウントを作成」からメールアドレスとパスワード（8文字以上）で登録する。
 右上に「判定: Codex / ランク: Codex」と出ていれば、AI を使える状態である。「(未接続)」が付いた方は使えていない。
+
+旧版（データを `data/*.json` に保存していた版）のデータは、アカウントを作ってから `pnpm db:import --email 登録したメールアドレス` で取り込める。
 
 判定を Jev に切り替えるときは、先に `.env.example` を `.env` にコピーし、`TYPESAFE_API_KEY` に [TypeSafe AI](https://console.typesafe.ai/keys) で発行したキーを書いてから、画面の設定で Jev を選ぶ。
 `.env` は起動時に読み込まれ、`.gitignore` で除外している。
@@ -67,8 +75,9 @@ AI がなくても起動する。
 | `CODEX_BIN`        | `codex`  | Codex CLI のパス                                       |
 | `DECISIONS_EFFORT` | `low`    | Codex での判定の推論の深さ                             |
 | `RANK_EFFORT`      | `medium` | ランク付けの推論の深さ                                 |
-| `DATA_DIR`         | `./data` | 判定結果・関心銘柄・シミュレーターの口座・設定の保存先 |
-| `PORT`             | `3000`   | API サーバーのポート                                   |
+| `DATABASE_URL`     | `http://localhost:8080` | DB の接続先。sqld は `http://〜`、Turso は `libsql://〜`、PostgreSQL は `postgresql://〜` |
+| `DATABASE_AUTH_TOKEN` | なし  | Turso のトークン                                       |
+| `PORT`             | `3000`   | アプリのポート                                         |
 
 ### うまく動かないとき
 
@@ -76,6 +85,8 @@ AI がなくても起動する。
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `pnpm install` が `ERR_PNPM_MISSING_TARBALL_INTEGRITY` で止まる | `pnpm-lock.yaml` の `xlsx` の integrity が消えている。`pnpm clean --lockfile && pnpm install` で作り直す |
 | `ERR_PNPM_IGNORED_BUILDS`（esbuild）で止まる                    | `pnpm-workspace.yaml` の `allowBuilds` に esbuild があるか確認する                                       |
+| `ERR_PNPM_IGNORED_BUILDS`（workerd）で止まる                    | `pnpm-workspace.yaml` の `allowBuilds` に workerd があるか確認する                                       |
+| ログインやアカウント作成が「HTTP 500」で失敗する                | `pnpm db:up` で DB が起動しているか、`pnpm db:migrate` を実行したかを確認する                             |
 | 右上に「(未接続)」と出る                                        | Codex なら `codex --version`（0.160 以上か）と `codex login` を、Jev なら `TYPESAFE_API_KEY` を確認する  |
 
 ## 使い方（ブラウザ UI）
@@ -103,7 +114,7 @@ AI がなくても起動する。
 | スクリーナー   | 全銘柄スキャンの結果。判定・大型株・文字列で絞り込み、列で並べ替える。「売買」で売買ダイアログを開く |
 
 インジケーターは、移動平均・ボリンジャーバンド・一目均衡表・出来高・RSI・RCI・MACD から選ぶ。初期表示は売買ルールごとに異なり、スイングは RSI・MACD、急落リバウンドは RCI を下の段に出す。
-`http://localhost:5173/#7203` のように、URL で銘柄を指定して開ける。
+`http://localhost:3000/?code=7203` のように、URL で銘柄を指定して開ける。
 
 ### 関心銘柄タブ
 
@@ -134,23 +145,33 @@ AI がなくても起動する。
 
 - 取引時間中（平日 9:00〜15:45）は、1分ごとに株価を取り直してチャートを更新する。判定は自動では出し直さない
 - 設定（左下の歯車）で、判定に使う AI（Codex / Jev）と Codex のモデル（既定 `gpt-6-luna`）を切り替える。アプリのバージョンとライセンスもここに出る
+- 設定で利確 / 損切りの通知をオンにすると、シミュレーターの保有株がラインに届いたときにブラウザ通知を出す。取引時間中は1分ごとに確かめ、同じラインでは1回だけ知らせる
+- 右上のメールアドレスのメニューから、ログアウトと退会ができる。退会すると、そのアカウントのデータはすべて消える
 - スマホ幅では、画面を1列に並べ、画面の切り替えタブを下に固定する
 
 ### 保存されるもの
 
-判定結果・スキャン結果・関心銘柄・シミュレーターの口座・設定は `data/` に、表示の設定（売買ルールの選択やインジケーターなど）はブラウザに保存する。
-`data/` は `.gitignore` で除外している。
+判定結果・スキャン結果・関心銘柄・シミュレーターの口座・設定は、ユーザーごとにデータベースに保存する。手元では SQLite（libSQL サーバー sqld）を使い、データが Docker のボリューム `db-data` に残る。
+表示の設定（売買ルールの選択やインジケーターなど）と、通知済みのラインはブラウザに保存する。
 
 ## 使い方（API）
 
+API は `/api` の下にあり、ログインが要る（売買ルールの一覧 `/api/strategies` と認証の API は除く）。
+curl では、先にログインして Cookie を保存し、以降のリクエストで送る。
+
+```sh
+curl -s -c cookie.txt -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"..."}' localhost:3000/api/auth/login
+```
+
 `strategy` は `swing`（省略時）か `rebound` を指定する。
 
-### 全銘柄を調べる（`GET /screen`）
+### 全銘柄を調べる（`GET /api/screen`）
 
 時間がかかる（急落リバウンドで候補728件のとき約4分。2026-10-03 計測）ので、進捗を SSE で返す。`&earnings=1` `&news=1` で材料を足す。
 
 ```sh
-curl -sN 'localhost:3000/screen?strategy=swing' | jq -R --unbuffered -r '
+curl -sN -b cookie.txt 'localhost:3000/api/screen?strategy=swing' | jq -R --unbuffered -r '
   select(startswith("data: ")) | .[6:] | fromjson
   | if .phase then "\(.phase) \(.done)/\(.total)"
     else {summary, ranking, top: [.results[:10][] | {code, name, verdict, satisfied, ranking}]} end'
@@ -167,10 +188,10 @@ curl -sN 'localhost:3000/screen?strategy=swing' | jq -R --unbuffered -r '
 明らかに見送りの銘柄は結果に含めない（基準は [DESIGN.md](DESIGN.md#銘柄の選び方)）。
 各結果には JPX の業種（`sector`）と規模区分（`scale`）が付くので、大型株に絞るなら `scale` が `TOPIX Core30` / `TOPIX Large70` のものを見る。
 
-### 銘柄を指定して調べる（`POST /judge`）
+### 銘柄を指定して調べる（`POST /api/judge`）
 
 ```sh
-curl -s -X POST localhost:3000/judge \
+curl -s -b cookie.txt -X POST localhost:3000/api/judge \
   -H 'Content-Type: application/json' \
   -d '{"strategy":"swing","codes":["7203","6758","8306"],"news":{"7203":"特に目立ったニュースなし"},"options":{"earnings":true}}'
 ```
@@ -188,13 +209,18 @@ curl -s -X POST localhost:3000/judge \
 
 ## 開発用コマンド
 
-| コマンド          | 内容                                 |
-| ----------------- | ------------------------------------ |
-| `pnpm dev`        | API と UI を起動（変更を監視）       |
-| `pnpm start`      | API サーバーだけ起動                 |
-| `pnpm typecheck`  | 型チェック                           |
-| `pnpm ui:build`   | UI を `ui/dist` にビルド             |
-| `pnpm ui:preview` | UI をビルドして API サーバーから配信 |
+| コマンド                 | 内容                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| `pnpm dev`               | アプリを起動（変更を監視）                                   |
+| `pnpm build`             | Node のサーバーとしてビルド（`.output/`）                    |
+| `pnpm start`             | ビルドしたサーバーを起動                                     |
+| `pnpm build:cloudflare`  | Cloudflare Workers 向けにビルド（`dist/`）                   |
+| `pnpm deploy:cloudflare` | Cloudflare Workers 向けにビルドしてデプロイ                  |
+| `pnpm typecheck`         | 型チェック                                                   |
+| `pnpm db:up`             | SQLite（libSQL サーバー）を Docker Compose で起動            |
+| `pnpm db:generate`       | スキーマから SQLite 用（`drizzle/`）と PostgreSQL 用（`drizzle-pg/`）のマイグレーションを作る |
+| `pnpm db:migrate`        | マイグレーションを適用                                       |
+| `pnpm db:import`         | 旧版の `data/*.json` を指定したユーザーに取り込む            |
 
 コードの構成と売買ルールの増やし方は [DESIGN.md](DESIGN.md#コードの構成) を参照。
 
@@ -207,7 +233,7 @@ curl -s -X POST localhost:3000/judge \
 | ニュース見出し             | Google ニュースの RSS                                             |
 
 いずれも各サービスの利用規約の範囲で、個人の用途に限って使う（Google ニュースの RSS は個人の閲覧用途に限られる）。
-`/screen` は1回で Yahoo Finance に約1,560件のリクエストを送るので、短時間に何度も実行しない。
+`/api/screen` は1回で Yahoo Finance に約1,560件のリクエストを送るので、短時間に何度も実行しない。
 
 ## 参考文献
 
