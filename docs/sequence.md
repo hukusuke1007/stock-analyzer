@@ -1,19 +1,19 @@
 # シーケンス図
 
-`/screen`（東証プライム全銘柄）と `/judge`（銘柄を指定）で、サーバー内部と外部サービスの間で何が起きるかを示す。
+`/api/screen`（東証プライム全銘柄）と `/api/judge`（銘柄を指定）で、サーバー内部と外部サービスの間で何が起きるかを示す。
 参加者とソースコードの対応は次のとおり。
 
 | 参加者   | 実体                                                          |
 | -------- | ------------------------------------------------------------- |
-| Client   | curl など                                                     |
-| Server   | `src/server.ts`（Hono）                                       |
-| Strategy | `src/strategies/rebound.ts` / `swing.ts`（`strategy` で選ぶ） |
-| JPX      | 東証上場銘柄一覧（`data_j.xlsx`）。`src/prime.ts` が取得      |
-| Yahoo    | Yahoo Finance chart API（日足）。`src/technicals.ts` が取得   |
-| Decisions | 銘柄ごとの判定。既定は Codex App Server 経由の GPT-6 Luna(`src/ai/decisions-codex.ts`)、設定で Jev を選んだら TypeSafe AI の Jev(`src/ai/decisions-jev.ts`) |
-| Codex    | Codex App Server(`codex app-server`、stdio の JSON-RPC)の GPT-6 Luna。ランク付け。`src/ai/codex.ts` が呼ぶ |
+| Client   | 画面、または curl など(ログインの Cookie を付ける)            |
+| Server   | `src/server/api.ts`（Hono。TanStack Start の `/api/*` から呼ばれる）                                       |
+| Strategy | `src/server/strategies/rebound.ts` / `swing.ts`（`strategy` で選ぶ） |
+| JPX      | 東証上場銘柄一覧（`data_j.xlsx`）。`src/server/prime.ts` が取得      |
+| Yahoo    | Yahoo Finance chart API（日足）。`src/server/technicals.ts` が取得   |
+| Decisions | 銘柄ごとの判定。Node の既定は Codex App Server 経由の GPT-6 Luna、Cloudflare Workers の既定は Workers AI(`src/server/ai/decisions-batch.ts`)。設定で Jev を選んだら TypeSafe AI の Jev(`src/server/ai/decisions-jev.ts`) |
+| Codex    | ランク付け。Codex App Server(`codex app-server`、stdio の JSON-RPC)の GPT-6 Luna。Codex を使えない Workers では Workers AI(`src/server/ai/ranking.ts`) |
 
-## `/screen`: 東証プライム全銘柄を調べる
+## `/api/screen`: 東証プライム全銘柄を調べる
 
 進捗を SSE で返し、最後に全結果を `result` イベントで返す。所要時間は約40〜50秒(AI の判定とランク付けを含めるとさらに延びる)。
 
@@ -28,7 +28,7 @@ sequenceDiagram
     participant JV as Decisions
     participant CX as Codex
 
-    C->>S: GET /screen?strategy=swing
+    C->>S: GET /api/screen?strategy=swing
     alt strategy が不正
         S-->>C: 400 {"error"}
     end
@@ -79,9 +79,9 @@ sequenceDiagram
 ```
 
 - 個々の銘柄の取得や判定に失敗しても全体は止めず、`errors` に入れて続ける。
-- `/screen` ではニュースを渡せないので、`badNews` の答えは使わない（`materialChecked: false`）。
+- `/api/screen` ではニュースを渡せないので、`badNews` の答えは使わない（`materialChecked: false`）。
 
-## `/judge`: 銘柄を指定して調べる
+## `/api/judge`: 銘柄を指定して調べる
 
 指定した銘柄を並列に調べ、まとめて JSON で返す。候補の絞り込みはしない（指定した銘柄はすべて結果に入る）。
 
@@ -95,7 +95,7 @@ sequenceDiagram
     participant JV as Decisions
     participant CX as Codex
 
-    C->>S: POST /judge {"strategy","codes","news"}
+    C->>S: POST /api/judge {"strategy","codes","news"}
     alt strategy が不正 / codes が空
         S-->>C: 400 {"error"}
     end

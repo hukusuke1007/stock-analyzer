@@ -1,0 +1,14 @@
+# イメージに入れないもの(個人のデータ・秘密情報・ビルド結果・旧 UI)
+node_modules
+.output
+dist
+.wrangler
+data
+.env
+.env.*
+.dev.vars
+.git
+.agents
+.claude
+ui
+docs/images

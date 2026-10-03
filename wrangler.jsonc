@@ -1,0 +1,23 @@
+// Cloudflare Workers の設定(DEPLOY_TARGET=cloudflare でビルドしたとき)。手順は HOW_TO_DEPLOY.md
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stock-analyzer",
+  "compatibility_date": "2026-09-01",
+  // node:async_hooks(ユーザーごとの設定)や process.env を使うので Node 互換を有効にする
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": { "enabled": true },
+  // DB は D1。シークレットの DATABASE_URL を設定したときは、D1 の代わりに Turso に繋ぐ(src/server/db/connection.cloudflare.ts)
+  // Workers AI。Codex を起動できない Workers で、判定とランク付けに使う(src/server/ai/workers-ai.ts)
+  "ai": { "binding": "AI" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "stock-analyzer",
+      // wrangler d1 create stock-analyzer が表示する database_id に置き換える
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      // SQLite 版のマイグレーション(drizzle-kit が作る)をそのまま wrangler d1 migrations apply で当てる
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

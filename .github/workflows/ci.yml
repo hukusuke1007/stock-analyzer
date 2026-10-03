@@ -17,4 +17,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm ui:build
+      # Node のサーバー(Docker・Cloud Run・ECS)と Cloudflare Workers の両方でビルドできることを確かめる
+      - run: pnpm build
+      - run: pnpm build:cloudflare

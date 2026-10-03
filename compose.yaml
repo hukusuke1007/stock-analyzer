@@ -1,0 +1,48 @@
+# ローカルで全体を動かす構成。
+# - db: SQLite(libSQL サーバー sqld)。開発の既定。DATABASE_URL=http://localhost:8080
+# - postgres: PostgreSQL。Cloud SQL・RDS と同じ方言で確かめるときに使う(--profile postgres)。
+#   DATABASE_URL=postgresql://stock:stock@localhost:5432/stock
+# - app: 本番と同じイメージのアプリ(--profile app)。起動時にマイグレーションを適用する
+# データはボリュームに残るので、コンテナを作り直しても消えない(docker compose down -v で消える)。
+# 開発中は db だけを立て(pnpm db:up)、アプリは pnpm dev で動かす
+services:
+  db:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - db-data:/var/lib/sqld
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: stock
+      POSTGRES_PASSWORD: stock
+      POSTGRES_DB: stock
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    profiles:
+      - postgres
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # PostgreSQL で動かすときは postgresql://stock:stock@postgres:5432/stock にし、--profile postgres も付ける
+      DATABASE_URL: ${APP_DATABASE_URL:-http://db:8080}
+      # 判定の AI を Jev にするときだけ使う。手元の .env の値を渡す
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      # Codex の認証情報。どちらかを渡すと、コンテナの中の Codex が使える(docker/entrypoint.sh)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CODEX_AUTH_JSON: ${CODEX_AUTH_JSON:-}
+    depends_on:
+      - db
+    profiles:
+      - app
+
+volumes:
+  db-data:
+  postgres-data:
