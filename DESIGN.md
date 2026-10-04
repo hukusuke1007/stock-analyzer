@@ -235,8 +235,7 @@ docs/
 └── images/              # README の画面のスクリーンショット
 drizzle/                 # マイグレーション(pnpm db:generate で作る)
 scripts/
-├── migrate.mjs          # マイグレーションの適用(Docker のコンテナの起動時にも使う)
-└── import-json.ts       # 旧版の data/*.json をユーザーの DB に取り込む
+└── migrate.mjs          # マイグレーションの適用(Docker のコンテナの起動時にも使う)
 src/
 ├── router.tsx           # ルーターと TanStack Query のクライアント
 ├── start.ts             # 画面はブラウザで描画する(SSR しない)

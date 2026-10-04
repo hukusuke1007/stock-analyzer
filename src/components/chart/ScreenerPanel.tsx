@@ -389,11 +389,11 @@ function ScreenSummary({ screen, strategyLabel, error }: { screen: ScreenResult 
       {screen.ranking?.error ? (
         <>
           {" · "}
-          <span className="error">{screen.ranking.provider ?? "Codex"} のランク付けに失敗: {screen.ranking.error}</span>
+          <span className="error">{screen.ranking.provider} のランク付けに失敗: {screen.ranking.error}</span>
         </>
       ) : screen.ranking ? (
         <div className="rank-summary">
-          {screen.ranking.provider ?? "Codex"}({screen.ranking.model})上位{screen.ranking.ranked}件をランク付け: {screen.ranking.summary}
+          {screen.ranking.provider}({screen.ranking.model})上位{screen.ranking.ranked}件をランク付け: {screen.ranking.summary}
         </div>
       ) : null}
     </div>

@@ -10,7 +10,7 @@ import { buildSimPlan, findPosition, formatPrice, LOT, readJudgment, useOrderBus
 
 /**
  * 「関心銘柄から買う」の見出しと表を描く。関心銘柄を、その場で100株買えるように並べる。
- * 開閉はブラウザに覚えておく(キー simWatchCollapsed は以前の版と同じにして、保存済みの開閉を引き継ぐ)。
+ * 開閉はブラウザに覚えておく。
  */
 export function WatchBuySection() {
   const { codes } = useWatchlist();

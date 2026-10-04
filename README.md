@@ -57,8 +57,6 @@ pnpm dev          # アプリを http://localhost:3000 で起動
 ブラウザで <http://localhost:3000> を開き、「アカウントを作成」からメールアドレスとパスワード（8文字以上）で登録する。
 右上に「判定: Codex / ランク: Codex」と出ていれば、AI を使える状態である。「(未接続)」が付いた方は使えていない。
 
-旧版（データを `data/*.json` に保存していた版）のデータは、アカウントを作ってから `pnpm db:import --email 登録したメールアドレス` で取り込める。
-
 判定を Jev に切り替えるときは、先に `.env.example` を `.env` にコピーし、`TYPESAFE_API_KEY` に [TypeSafe AI](https://console.typesafe.ai/keys) で発行したキーを書いてから、画面の設定で Jev を選ぶ。
 `.env` は起動時に読み込まれ、`.gitignore` で除外している。
 
@@ -221,7 +219,6 @@ curl -s -b cookie.txt -X POST localhost:3000/api/judge \
 | `pnpm db:up`             | SQLite（libSQL サーバー）を Docker Compose で起動            |
 | `pnpm db:generate`       | スキーマから SQLite 用（`drizzle/`）と PostgreSQL 用（`drizzle-pg/`）のマイグレーションを作る |
 | `pnpm db:migrate`        | マイグレーションを適用                                       |
-| `pnpm db:import`         | 旧版の `data/*.json` を指定したユーザーに取り込む            |
 
 コードの構成と売買ルールの増やし方は [DESIGN.md](DESIGN.md#コードの構成) を参照。
 
