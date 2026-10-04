@@ -57,7 +57,7 @@ export type Repository = {
   readSimAccount(userId: string): Promise<SimAccountRecord | null>;
   // 口座がまだなければ作る(すでにあれば何もしない)
   createSimAccountIfMissing(userId: string, account: SimAccountRecord): Promise<void>;
-  // 保有株・売買履歴を消し、口座を account で置き換える(元金のリセット・旧版のデータの取り込み)
+  // 保有株・売買履歴を消し、口座を account で置き換える(元金のリセット)
   replaceSimAccount(userId: string, account: SimAccountRecord): Promise<void>;
   // 口座の revision が expectedRevision のままなら、注文の変更をまとめて書き込み nextRevision にして true を返す。
   // 別の注文が先に書き込んでいたら何もせず false を返す(呼び出し側で読み直してやり直す)

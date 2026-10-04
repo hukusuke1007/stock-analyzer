@@ -3,7 +3,6 @@ import { useSelector } from "@tanstack/react-store";
 import { useCallback, useMemo } from "react";
 import { requestApi } from "./api";
 import { isStockCode, normalizeCode } from "./format";
-import { readLocal } from "./local-storage";
 import type {
   BarsResponse,
   DecisionResult,
@@ -189,14 +188,10 @@ export function useJudgment(code: string | null, strategy?: string): JudgmentSta
 }
 
 /**
- * 判定に使った Decisions の答え。Jev だけを使っていた頃に保存した結果(r.jev)も同じ形で読む。
+ * 判定に使った Decisions の答え。
  */
 export function decisionOf(r: JudgeResult | null | undefined): DecisionResult | null {
-  if (r?.decision) {
-    return r.decision;
-  }
-
-  return r?.jev ? { ...r.jev, provider: "jev" } : null;
+  return r?.decision ?? null;
 }
 
 /**
@@ -288,8 +283,8 @@ export const watchlistQuery = queryOptions({
       return { codes: saved.codes, columns: saved.columns };
     }
 
-    // まだ保存していなければ、旧 UI がブラウザに保存していたもの(なければ既定の銘柄)から始めて保存する
-    const initial = { codes: readLocal("watchlist", DEFAULT_WATCH), columns: saved.columns };
+    // まだ保存していなければ、既定の銘柄から始めて保存する
+    const initial = { codes: DEFAULT_WATCH, columns: saved.columns };
     await requestApi("/watchlist", { method: "PUT", body: initial });
 
     return initial;

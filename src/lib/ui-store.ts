@@ -5,7 +5,7 @@ import type { Options } from "./types";
 
 // 画面の状態のうち、サーバーに保存しないもの(表示設定・入力中の下書き・判定中の印など)。
 // サーバーのデータ(株価・判定結果・関心銘柄・口座)は TanStack Query のキャッシュに持ち、ここには置かない。
-// 表示設定は localStorage に残す。キーは旧 UI と同じにして、以前の設定をそのまま引き継ぐ
+// 表示設定は localStorage に残す
 
 export type PendingJudgment = { loading: true } | { error: string };
 

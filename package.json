@@ -25,7 +25,6 @@
     "db:up": "docker compose up -d db",
     "db:generate": "drizzle-kit generate && drizzle-kit generate --config drizzle.pg.config.ts",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
-    "db:import": "tsx --env-file-if-exists=.env scripts/import-json.ts",
     "build:cloudflare": "DEPLOY_TARGET=cloudflare vite build",
     "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy"
   },
@@ -53,7 +52,6 @@
     "@vitejs/plugin-react": "^6.1.1",
     "drizzle-kit": "^0.31.11",
     "nitro": "3.0.260903-beta",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "wrangler": "^4.147.0"

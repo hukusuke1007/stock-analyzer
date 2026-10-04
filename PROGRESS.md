@@ -51,7 +51,6 @@ UI は TanStack Start(Router・Query)と Vite の React アプリに作り直し
 - [x] `storage.ts` の判定結果・スクリーニング・関心銘柄を、ユーザーごとに Drizzle で読み書きする形に置き換える
 - [x] 設定(`settings.ts`)をユーザーごとに、リクエストのたびに DB から読む形にする(複数インスタンスで設定が食い違わないため)
 - [x] シミュレーターの注文を DB のトランザクションで処理する(プロセス内の直列化キューは複数インスタンスで効かないため)
-- [x] 既存の `data/*.json` を指定したユーザーの DB に取り込むスクリプト(`pnpm db:import`)を作り、手元のデータで確かめる
 
 ## 6. UI の土台(Router・Query)
 
@@ -116,7 +115,6 @@ UI は TanStack Start(Router・Query)と Vite の React アプリに作り直し
 - [x] `DATABASE_URL` が `postgres://` なら PostgreSQL に接続する(Cloud SQL は Unix ソケット、RDS は TLS)
 - [x] Turso(libSQL)も選べるようにする。Node・Workers とも `DATABASE_URL` が `libsql://` なら Turso に繋ぎ、Workers で `DATABASE_URL` がなければ D1 を使う
 - [x] Compose に PostgreSQL を足し、PostgreSQL 版で API とシミュレーターの同時注文を確かめる
-- [x] 既存の JSON の取り込み(`pnpm db:import`)を Repository 経由にして、どの DB にも入れられるようにする
 - [x] `HOW_TO_DEPLOY.md` の GCP を Cloud Run + Cloud SQL、AWS を ECS Express Mode + RDS に書き換える
 
 ## 15. コンテナで Codex を使う

@@ -40,15 +40,13 @@ export type JudgeResult = {
   materials: { earnings: EarningsInfo | null; news: NewsItem[] | null } | null;
   technicals: Record<string, number | string | null>;
   decision: DecisionResult | null;
-  // 旧版(Jev だけを使っていた頃)に保存した結果は decision の代わりに jev を持つ
-  jev?: Omit<DecisionResult, "provider">;
   ranking: RankItem | null;
   sector?: string;
   scale?: string;
 };
 
-// provider はランク付けに使った AI の表示名。Codex だけを使っていた頃に保存した結果にはない
-export type RankingInfo = { provider?: string; model: string; summary: string; ranked: number; error: string | null };
+// provider はランク付けに使った AI の表示名
+export type RankingInfo = { provider: string; model: string; summary: string; ranked: number; error: string | null };
 
 export type JudgeResponse = {
   disclaimer: string;
